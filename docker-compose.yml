@@ -1,0 +1,80 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile.dev
+    container_name: trikal-frontend
+    ports:
+      - "${FRONTEND_PORT:-4310}:4310"
+    volumes:
+      - ./apps/frontend:/app/apps/frontend
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/frontend/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:${BACKEND_PORT:-8310}
+    depends_on:
+      - backend
+    networks:
+      - trikal-network
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.dev
+    container_name: trikal-backend
+    ports:
+      - "${BACKEND_PORT:-8310}:8310"
+    volumes:
+      - ./apps/backend:/app
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-trikal_db}
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=${BACKEND_ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - trikal-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: trikal-postgres
+    ports:
+      - "${POSTGRES_PORT:-5310}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trikal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-trikal_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trikal} -d ${POSTGRES_DB:-trikal_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trikal-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: trikal-redis
+    ports:
+      - "${REDIS_PORT:-6310}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - trikal-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  trikal-network:
+    driver: bridge

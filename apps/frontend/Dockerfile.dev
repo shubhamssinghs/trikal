@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.5.0 --activate
+
+# Copy monorepo config
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+
+# Copy all packages
+COPY packages ./packages
+COPY apps/frontend ./apps/frontend
+
+# Install dependencies for the entire monorepo
+RUN pnpm install --frozen-lockfile
+
+EXPOSE 3000
+
+WORKDIR /app/apps/frontend
+
+CMD ["npm", "run", "dev"]
