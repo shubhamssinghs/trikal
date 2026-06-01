@@ -11,7 +11,7 @@ services:
       - ./packages:/app/packages
       - /app/node_modules
       - /app/apps/frontend/node_modules
-      - /app/.next
+      - /app/apps/frontend/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:${BACKEND_PORT:-8310}
     depends_on:

@@ -5,13 +5,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.lib.oidc import jwks_client
 from app.middleware.logging import RequestLoggingMiddleware
-from app.utils.logger import setup_logger
+from app.utils.logger import setup_logger, get_logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logger()
+    log = get_logger("startup")
+    try:
+        await jwks_client.warm_cache()
+        log.info("oidc.jwks.warmed")
+    except Exception:
+        log.exception("oidc.jwks.warm_failed")
     yield
     await engine.dispose()
 

@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:4310"]
 
+    # OpenID Connect (Trishul IAM)
+    OIDC_CLIENT_ID: str
+    OIDC_CLIENT_SECRET: str
+    OIDC_AUDIENCE: str
+    OIDC_ISSUER: str = "https://identity.trishuliam.com"
+    OIDC_REDIRECT_URI: str = "http://localhost:8310/api/v1/auth/callback"
+    FRONTEND_URL: str = "http://localhost:4310/auth/callback"
+    FRONTEND_LOGOUT_URL: str = "http://localhost:4310/login"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

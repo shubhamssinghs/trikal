@@ -1,17 +1,25 @@
 import axios from "axios";
-
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8310";
+import { useAuthStore } from "@/lib/stores/auth";
 
 export const apiClient = axios.create({
-  baseURL: `${baseURL}/api/v1`,
+  baseURL: "/api/v1",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().accessToken;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) { /* handle unauthorized */ }
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearTokens();
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   }
 );
