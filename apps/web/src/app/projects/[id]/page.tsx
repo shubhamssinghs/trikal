@@ -10,10 +10,14 @@ export const dynamic = "force-dynamic";
 
 const IAPI = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${IAPI}${path}`, { cache: "no-store" });
-  if (!res.ok) return [] as unknown as T;
-  return res.json();
+async function fetchJson<T>(path: string, fallback: T = [] as unknown as T): Promise<T> {
+  try {
+    const res = await fetch(`${IAPI}${path}`, { cache: "no-store" });
+    if (!res.ok) return fallback;
+    return res.json();
+  } catch {
+    return fallback;
+  }
 }
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
