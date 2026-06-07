@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDate } from "@/lib/format";
 import { useRouter } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
@@ -68,7 +69,7 @@ export function MilestonesPanel({ projectId, milestones: initial }: Props) {
                 {m.status === "completed" && <span className="text-white text-xs flex items-center justify-center">✓</span>}
               </button>
               <span className={`flex-1 text-sm ${m.status === "completed" ? "line-through text-gray-500" : "text-gray-200"}`}>{m.name}</span>
-              {m.dueDate && <span className="text-xs text-gray-500">{new Date(m.dueDate).toLocaleDateString()}</span>}
+              {m.dueDate && <span className="text-xs text-gray-500">{formatDate(m.dueDate)}</span>}
             </div>
           ))}
         </div>

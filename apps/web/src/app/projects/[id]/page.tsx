@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
+import { formatDate } from "@/lib/format";
 import { ApprovalQueue } from "@/components/approval-queue";
 import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
@@ -104,8 +105,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <dl className="space-y-1.5">
                 {[
                   { label: "Company", value: project.company?.name ?? "—" },
-                  { label: "Start", value: project.startDate ? new Date(project.startDate).toLocaleDateString() : "—" },
-                  { label: "Target", value: project.targetEndDate ? new Date(project.targetEndDate).toLocaleDateString() : "—" },
+                  { label: "Start", value: formatDate(project.startDate) },
+                  { label: "Target", value: formatDate(project.targetEndDate) },
                   { label: "Milestones", value: String((milestones as unknown[]).length) },
                   { label: "Open Risks", value: String((risks as {status:string}[]).filter((r) => r.status === "open").length) },
                   { label: "Recommendations", value: String(recommendations.length) },

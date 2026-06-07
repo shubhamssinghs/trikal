@@ -25,7 +25,7 @@ export default async function TodayPage() {
         <div className="mb-6">
           <h1 className="text-xl font-semibold">Today</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            {new Date().toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
 

@@ -48,7 +48,7 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
                 <div key={t.id} className="flex items-center justify-between rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
                   <div>
                     <p className="text-sm text-white">{t.title}</p>
-                    <p className="text-xs text-gray-500">{new Date(t.occurredAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">{new Date(t.occurredAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded ${
                     t.processedAt ? "bg-emerald-900/50 text-emerald-400" : "bg-gray-700 text-gray-400"
