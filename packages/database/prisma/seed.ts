@@ -6,20 +6,24 @@ async function main() {
   const org = await prisma.organization.upsert({
     where: { id: "org_dev" },
     update: {},
+    create: { id: "org_dev", name: "Trikal Dev", slug: "trikal-dev" },
+  });
+
+  await prisma.user.upsert({
+    where: { id: "user_dev" },
+    update: {},
     create: {
-      id: "org_dev",
-      name: "Trikal Dev",
-      slug: "trikal-dev",
+      id: "user_dev",
+      email: "dev@trikal.local",
+      name: "Dev User",
+      organizationId: "org_dev",
     },
   });
 
   const standardProfile = await prisma.complianceProfile.upsert({
     where: { id: "cp_standard" },
     update: {},
-    create: {
-      id: "cp_standard",
-      name: "Standard",
-    },
+    create: { id: "cp_standard", name: "Standard" },
   });
 
   const hipaaProfile = await prisma.complianceProfile.upsert({
