@@ -19,6 +19,7 @@
     "@nestjs/jwt": "^10.0.0",
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@prisma/client": "^5.14.0",
     "@trikal/database": "workspace:*",
     "@trikal/shared": "workspace:*",
     "@trishuliam/oauth-client": "^0.1.2",

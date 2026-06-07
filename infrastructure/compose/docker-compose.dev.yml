@@ -40,7 +40,7 @@ services:
       - ../../.env
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-trikal}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/trikal
       - REDIS_HOST=redis
     volumes:
       # Hot-reload: NestJS watch picks up changes to src
@@ -73,7 +73,7 @@ services:
       - ../../.env
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-trikal}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/trikal
       - REDIS_HOST=redis
     volumes:
       - ../../apps/worker/src:/app/apps/worker/src

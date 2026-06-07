@@ -22,6 +22,10 @@ export class TrishulAuthMiddleware implements NestMiddleware {
   }
 
   async use(req: Request, res: Response, next: NextFunction) {
+    // Bypass auth in dev when OIDC issuer is not configured
+    if (!this.config.get("OIDC_ISSUER") || this.config.get("NODE_ENV") === "development") {
+      return next();
+    }
     try {
       await this.requireAuth(req, res, next);
     } catch {
