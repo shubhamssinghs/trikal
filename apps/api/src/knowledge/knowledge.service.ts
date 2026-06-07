@@ -38,7 +38,13 @@ export class KnowledgeService {
     // 3. Generate embeddings if Voyage AI is configured
     let embeddings: number[][] = [];
     if (this.embedding.isEnabled) {
-      embeddings = await this.embedding.embedTexts(chunks);
+      try {
+        embeddings = await this.embedding.embedTexts(chunks);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Log but don't fail ingest — chunks are still stored without embeddings
+        console.warn(`Embedding generation failed (${msg.substring(0, 80)}), storing chunks without vectors`);
+      }
     }
 
     // 4. Store chunks with embeddings

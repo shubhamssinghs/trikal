@@ -24,17 +24,33 @@ export class EmbeddingService {
     return this.client !== null;
   }
 
+  private async withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err: unknown) {
+        const isRateLimit = err instanceof Error && err.message.includes("429");
+        if (isRateLimit && i < retries - 1) {
+          const delay = (i + 1) * 20_000; // 20s, 40s
+          this.logger.warn(`Voyage rate limit hit, retrying in ${delay / 1000}s...`);
+          await new Promise((r) => setTimeout(r, delay));
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw new Error("Max retries exceeded");
+  }
+
   async embedTexts(texts: string[]): Promise<number[][]> {
     if (!this.client) return [];
 
     const results: number[][] = [];
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const batch = texts.slice(i, i + BATCH_SIZE);
-      const response = await this.client.embed({
-        input: batch,
-        model: EMBEDDING_MODEL,
-        inputType: "document",
-      });
+      const response = await this.withRetry(() =>
+        this.client!.embed({ input: batch, model: EMBEDDING_MODEL, inputType: "document" })
+      );
       const embeddings = (response.data ?? []).map((d) => (d.embedding ?? []) as number[]);
       results.push(...embeddings);
     }
@@ -43,11 +59,9 @@ export class EmbeddingService {
 
   async embedQuery(query: string): Promise<number[] | null> {
     if (!this.client) return null;
-    const response = await this.client.embed({
-      input: [query],
-      model: EMBEDDING_MODEL,
-      inputType: "query",
-    });
-    return ((response.data?.[0]?.embedding ?? []) as number[]);
+    const response = await this.withRetry(() =>
+      this.client!.embed({ input: [query], model: EMBEDDING_MODEL, inputType: "query" })
+    );
+    return (response.data?.[0]?.embedding ?? []) as number[];
   }
 }

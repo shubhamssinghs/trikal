@@ -25,15 +25,27 @@ export class AiService {
       return this.mockResponse(userPrompt);
     }
 
-    const message = await this.client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    const block = message.content[0];
-    return block.type === "text" ? block.text : "";
+    try {
+      const message = await this.client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      const block = message.content[0];
+      return block.type === "text" ? block.text : "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("credit balance") || msg.includes("insufficient")) {
+        this.logger.error("Anthropic API: insufficient credits — add credits at console.anthropic.com");
+        return "[Anthropic API: insufficient credits. Go to console.anthropic.com → Plans & Billing to add credits.]";
+      }
+      if (msg.includes("429") || msg.includes("rate")) {
+        this.logger.warn("Anthropic API rate limited, using mock response");
+        return this.mockResponse(userPrompt);
+      }
+      throw err;
+    }
   }
 
   private mockResponse(userPrompt: string): string {

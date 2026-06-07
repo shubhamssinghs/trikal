@@ -238,7 +238,7 @@ model KnowledgeChunk {
   knowledgeItemId String
   content         String
   chunkIndex      Int
-  embedding       Unsupported("vector(1024)")?
+  embedding       Unsupported("vector(512)")?
   createdAt       DateTime @default(now())
 
   knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id])
