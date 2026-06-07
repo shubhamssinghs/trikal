@@ -16,7 +16,10 @@ export default async function ProjectsPage() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-6">
-        <h1 className="text-xl font-semibold mb-6">Projects</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-semibold">Projects</h1>
+          <Link href="/projects/new" className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">+ New Project</Link>
+        </div>
         {projects.length === 0 ? (
           <p className="text-sm text-gray-500">No projects yet.</p>
         ) : (

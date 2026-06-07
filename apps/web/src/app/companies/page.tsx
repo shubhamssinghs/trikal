@@ -18,6 +18,7 @@ export default async function CompaniesPage() {
       <main className="max-w-5xl mx-auto px-6 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-semibold">Companies</h1>
+          <Link href="/companies/new" className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">+ New Company</Link>
         </div>
 
         {companies.length === 0 ? (
