@@ -2,14 +2,29 @@ import Link from "next/link";
 import { queries } from "@/lib/api/queries";
 import { ApprovalQueue } from "@/components/approval-queue";
 import { AskProject } from "@/components/ask-project";
+import { MilestonesPanel } from "@/components/milestones-panel";
+import { RisksPanel } from "@/components/risks-panel";
+import { StakeholdersPanel } from "@/components/stakeholders-panel";
 
 export const dynamic = "force-dynamic";
 
+const IAPI = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${IAPI}${path}`, { cache: "no-store" });
+  if (!res.ok) return [] as unknown as T;
+  return res.json();
+}
+
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [project, recommendations] = await Promise.all([
+
+  const [project, recommendations, milestones, risks, stakeholders] = await Promise.all([
     queries.project(id).catch(() => null),
     queries.recommendations(id).catch(() => []),
+    fetchJson<unknown[]>(`/milestones?projectId=${id}`),
+    fetchJson<unknown[]>(`/risks?projectId=${id}`),
+    fetchJson<unknown[]>(`/stakeholders?projectId=${id}`),
   ]);
 
   if (!project) return <div className="p-6 text-gray-400">Project not found.</div>;
@@ -27,36 +42,37 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-6">
+        {/* Header */}
         <div className="mb-6">
           <Link href="/projects" className="text-xs text-gray-500 hover:text-gray-300">← Projects</Link>
-          <div className="flex items-center justify-end mt-1">
-            <Link href={`/projects/${id}/transcripts`}
-              className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
-              + Upload Transcript
-            </Link>
-          </div>
           <div className="flex items-start justify-between mt-1">
             <div>
               <h1 className="text-xl font-semibold">{project.name}</h1>
               {project.description && <p className="text-sm text-gray-400 mt-0.5">{project.description}</p>}
+              <p className="text-xs text-gray-500 mt-1">{project.company?.name}</p>
             </div>
-            <span className={`text-xs px-2 py-1 rounded ${
-              project.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
-              project.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
-              "bg-gray-800 text-gray-400"
-            }`}>{project.status}</span>
+            <div className="flex items-center gap-2">
+              <Link href={`/projects/${id}/transcripts`}
+                className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
+                + Upload Transcript
+              </Link>
+              <span className={`text-xs px-2 py-1 rounded ${
+                project.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
+                project.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
+                "bg-gray-800 text-gray-400"
+              }`}>{project.status}</span>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Main column */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Ask Project */}
             <AskProject projectId={id} />
-
-            {/* Approval Queue */}
             <ApprovalQueue projectId={id} recommendations={pending} />
+            <MilestonesPanel projectId={id} milestones={milestones as never} />
+            <RisksPanel projectId={id} risks={risks as never} />
 
-            {/* Approved actions */}
             {approved.length > 0 && (
               <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
                 <h2 className="text-sm font-medium text-gray-300 mb-3">Approved Actions ({approved.length})</h2>
@@ -75,44 +91,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
+          {/* Sidebar */}
           <aside className="space-y-4">
-            {/* Stats */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <h2 className="text-sm font-medium text-gray-300 mb-3">Knowledge Base</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "Items", value: (project as Record<string, unknown>)._count?.knowledgeItems ?? 0 },
-                  { label: "Recs", value: recommendations.length },
-                  { label: "Pending", value: pending.length },
-                  { label: "Approved", value: approved.length },
-                ].map((s) => (
-                  <div key={s.label} className="rounded bg-gray-800 px-2 py-2 text-center">
-                    <p className="text-lg font-semibold text-white">{String(s.value)}</p>
-                    <p className="text-xs text-gray-400">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <StakeholdersPanel projectId={id} stakeholders={stakeholders as never} />
 
             <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <h2 className="text-sm font-medium text-gray-300 mb-2">Project Info</h2>
+              <h2 className="text-sm font-medium text-gray-300 mb-3">Project Info</h2>
               <dl className="space-y-1.5">
-                <div className="flex justify-between">
-                  <dt className="text-xs text-gray-500">Company</dt>
-                  <dd className="text-xs text-gray-300">{project.company?.name ?? "—"}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-xs text-gray-500">Start</dt>
-                  <dd className="text-xs text-gray-300">
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : "—"}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-xs text-gray-500">Target</dt>
-                  <dd className="text-xs text-gray-300">
-                    {project.targetEndDate ? new Date(project.targetEndDate).toLocaleDateString() : "—"}
-                  </dd>
-                </div>
+                {[
+                  { label: "Company", value: project.company?.name ?? "—" },
+                  { label: "Start", value: project.startDate ? new Date(project.startDate).toLocaleDateString() : "—" },
+                  { label: "Target", value: project.targetEndDate ? new Date(project.targetEndDate).toLocaleDateString() : "—" },
+                  { label: "Milestones", value: String((milestones as unknown[]).length) },
+                  { label: "Open Risks", value: String((risks as {status:string}[]).filter((r) => r.status === "open").length) },
+                  { label: "Recommendations", value: String(recommendations.length) },
+                ].map((s) => (
+                  <div key={s.label} className="flex justify-between">
+                    <dt className="text-xs text-gray-500">{s.label}</dt>
+                    <dd className="text-xs text-gray-300">{s.value}</dd>
+                  </div>
+                ))}
               </dl>
             </section>
           </aside>

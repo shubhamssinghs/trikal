@@ -8,6 +8,9 @@ import { ProjectsModule } from "./projects/projects.module";
 import { TranscriptsModule } from "./transcripts/transcripts.module";
 import { KnowledgeModule } from "./knowledge/knowledge.module";
 import { AiModule } from "./ai/ai.module";
+import { MilestonesModule } from "./milestones/milestones.module";
+import { RisksModule } from "./risks/risks.module";
+import { StakeholdersModule } from "./stakeholders/stakeholders.module";
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { AiModule } from "./ai/ai.module";
     TranscriptsModule,
     KnowledgeModule,
     AiModule,
+    MilestonesModule,
+    RisksModule,
+    StakeholdersModule,
   ],
 })
 export class AppModule {}
