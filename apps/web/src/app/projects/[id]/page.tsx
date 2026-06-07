@@ -28,6 +28,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <main className="max-w-7xl mx-auto px-6 py-6">
         <div className="mb-6">
           <Link href="/projects" className="text-xs text-gray-500 hover:text-gray-300">← Projects</Link>
+          <div className="flex items-center justify-end mt-1">
+            <Link href={`/projects/${id}/transcripts`}
+              className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
+              + Upload Transcript
+            </Link>
+          </div>
           <div className="flex items-start justify-between mt-1">
             <div>
               <h1 className="text-xl font-semibold">{project.name}</h1>
