@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
 import { ApprovalQueue } from "@/components/approval-queue";
+import { AskProject } from "@/components/ask-project";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
+            {/* Ask Project */}
+            <AskProject projectId={id} />
+
             {/* Approval Queue */}
             <ApprovalQueue projectId={id} recommendations={pending} />
 

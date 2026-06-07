@@ -36,19 +36,31 @@ export class AiService {
     return block.type === "text" ? block.text : "";
   }
 
-  private mockResponse(transcript: string): string {
-    return JSON.stringify({
-      summary: `Mock analysis of: ${transcript.substring(0, 100)}...`,
-      decisions: [{ text: "Mock decision extracted from transcript", owner: null }],
-      actionItems: [
-        { text: "Review and configure ANTHROPIC_API_KEY for real AI analysis", owner: "Shubham", dueDate: null },
-      ],
-      openQuestions: ["What is the actual content of this transcript?"],
-      risks: [{ text: "AI analysis is mocked — configure API key for real results", severity: "medium" }],
-      scopeChanges: [],
-      suggestedTickets: [
-        { title: "Configure Anthropic API key", description: "Set ANTHROPIC_API_KEY in .env to enable real AI analysis", priority: "high" },
-      ],
-    });
+  private mockResponse(userPrompt: string): string {
+    // If the prompt looks like a transcript analysis request, return JSON
+    if (userPrompt.includes("Transcript:") && !userPrompt.includes("Question:")) {
+      return JSON.stringify({
+        summary: `Mock summary — set ANTHROPIC_API_KEY for real AI analysis.`,
+        decisions: [{ text: "Mock decision — configure API key for real results", owner: null }],
+        actionItems: [
+          { text: "Configure ANTHROPIC_API_KEY in .env to enable real AI analysis", owner: "Shubham", dueDate: null },
+        ],
+        openQuestions: [],
+        risks: [{ text: "AI analysis is mocked — configure API key for real results", severity: "medium" }],
+        scopeChanges: [],
+        suggestedTickets: [
+          { title: "Configure Anthropic API key", description: "Set ANTHROPIC_API_KEY in .env", priority: "high" },
+        ],
+      });
+    }
+
+    // For "ask project" and other conversational prompts, return plain text
+    const contextSnippet = userPrompt.includes("[Source 1]")
+      ? userPrompt.split("[Source 1]")[1]?.substring(0, 300) ?? ""
+      : "";
+
+    return contextSnippet
+      ? `[Mock AI — set ANTHROPIC_API_KEY for real answers]\n\nBased on the project knowledge base: ${contextSnippet.trim()}...`
+      : "[Mock AI — set ANTHROPIC_API_KEY for real answers]\n\nNo relevant context found in the project knowledge base.";
   }
 }

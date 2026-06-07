@@ -1,15 +1,24 @@
-import { Controller, Post, Get, Patch, Param, Query } from "@nestjs/common";
+import { Controller, Post, Get, Patch, Param, Query, Body } from "@nestjs/common";
 import { TranscriptAnalysisService } from "./transcript-analysis.service";
+import { AskProjectService } from "./ask-project.service";
 
 const DEV_ORG_ID = "org_dev";
 
 @Controller("ai")
 export class AiController {
-  constructor(private readonly transcriptAnalysis: TranscriptAnalysisService) {}
+  constructor(
+    private readonly transcriptAnalysis: TranscriptAnalysisService,
+    private readonly askProject: AskProjectService,
+  ) {}
 
   @Post("analyze/transcript/:transcriptId")
   analyze(@Param("transcriptId") transcriptId: string) {
     return this.transcriptAnalysis.analyzeTranscript(transcriptId, DEV_ORG_ID);
+  }
+
+  @Post("ask")
+  ask(@Body("projectId") projectId: string, @Body("question") question: string) {
+    return this.askProject.ask(projectId, question, DEV_ORG_ID);
   }
 
   @Get("recommendations")

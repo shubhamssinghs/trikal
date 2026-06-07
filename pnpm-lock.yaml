@@ -83,6 +83,9 @@ importers:
       rxjs:
         specifier: ^7.8.0
         version: 7.8.2
+      voyageai:
+        specifier: ^0.3.1
+        version: 0.3.1
     devDependencies:
       '@nestjs/cli':
         specifier: ^10.0.0
@@ -3565,6 +3568,18 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  voyageai@0.3.1:
+    resolution: {integrity: sha512-+f6gRsnuV7gi2tFvSFWTqERkZhox1VQCT0G+ALUDAwz75OpzpqaXgy6TSRkbrf6az9WZsXoAyDtplDksHLSbag==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@huggingface/transformers': ^3.8.0
+      onnxruntime-node: '>=1.17.0'
+    peerDependenciesMeta:
+      '@huggingface/transformers':
+        optional: true
+      onnxruntime-node:
+        optional: true
 
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
@@ -7190,6 +7205,12 @@ snapshots:
   validator@13.15.35: {}
 
   vary@1.1.2: {}
+
+  voyageai@0.3.1:
+    dependencies:
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
 
   walker@1.0.8:
     dependencies:
