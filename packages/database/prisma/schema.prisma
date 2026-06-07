@@ -1,0 +1,390 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "public")]
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  avatarUrl      String?
+  oidcSub        String?  @unique
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  memberships    Membership[]
+  aiRuns         AiRun[]
+  auditLogs      AuditLog[]
+  approvals      ApprovalRequest[]
+
+  @@map("users")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  companies Company[]
+
+  @@map("organizations")
+}
+
+// ─── Hierarchy ────────────────────────────────────────────────────────────────
+
+model Company {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  name               String
+  description        String?
+  website            String?
+  complianceProfile  ComplianceProfile? @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  programs      Program[]
+  projects      Project[]
+  stakeholders  Stakeholder[]
+
+  @@map("companies")
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id])
+  projects  Project[]
+
+  @@map("programs")
+}
+
+model Project {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  companyId           String
+  programId           String?
+  name                String
+  description         String?
+  status              ProjectStatus @default(ACTIVE)
+  startDate           DateTime?
+  targetEndDate       DateTime?
+  complianceProfile   ComplianceProfile? @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  company       Company       @relation(fields: [companyId], references: [id])
+  program       Program?      @relation(fields: [programId], references: [id])
+  workstreams   Workstream[]
+  memberships   Membership[]
+  stakeholders  Stakeholder[]
+  milestones    Milestone[]
+  risks         Risk[]
+  transcripts   MeetingTranscript[]
+  knowledgeItems KnowledgeItem[]
+  recommendations Recommendation[]
+  aiRuns        AiRun[]
+  diagrams      Diagram[]
+
+  @@map("projects")
+}
+
+model Workstream {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("workstreams")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  AT_RISK
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+// ─── People ───────────────────────────────────────────────────────────────────
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([userId, projectId])
+  @@map("memberships")
+}
+
+model Stakeholder {
+  id        String   @id @default(cuid())
+  companyId String?
+  projectId String?
+  name      String
+  email     String?
+  role      String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@map("stakeholders")
+}
+
+// ─── Planning ─────────────────────────────────────────────────────────────────
+
+model Milestone {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  dueDate     DateTime?
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("milestones")
+}
+
+model Risk {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  severity    String   @default("medium")
+  status      String   @default("open")
+  mitigationPlan String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@map("risks")
+}
+
+// ─── Transcripts & Knowledge ──────────────────────────────────────────────────
+
+model MeetingTranscript {
+  id             String   @id @default(cuid())
+  projectId      String
+  title          String
+  rawContent     String
+  storageKey     String?
+  occurredAt     DateTime?
+  classification DataClassification @default(INTERNAL)
+  processedAt    DateTime?
+  createdAt      DateTime @default(now())
+
+  project        Project        @relation(fields: [projectId], references: [id])
+  knowledgeItems KnowledgeItem[]
+
+  @@map("meeting_transcripts")
+}
+
+model KnowledgeItem {
+  id             String   @id @default(cuid())
+  projectId      String
+  transcriptId   String?
+  sourceType     String
+  title          String
+  content        String
+  classification DataClassification @default(INTERNAL)
+  createdAt      DateTime @default(now())
+
+  project    Project            @relation(fields: [projectId], references: [id])
+  transcript MeetingTranscript? @relation(fields: [transcriptId], references: [id])
+  chunks     KnowledgeChunk[]
+
+  @@map("knowledge_items")
+}
+
+model KnowledgeChunk {
+  id              String   @id @default(cuid())
+  knowledgeItemId String
+  content         String
+  chunkIndex      Int
+  embedding       Unsupported("vector(1536)")?
+  createdAt       DateTime @default(now())
+
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id])
+
+  @@map("knowledge_chunks")
+}
+
+enum DataClassification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  PII
+  PHI
+  FINANCIAL
+  LEGAL
+}
+
+// ─── AI & Recommendations ─────────────────────────────────────────────────────
+
+model AiRun {
+  id           String   @id @default(cuid())
+  projectId    String?
+  userId       String
+  agentType    String
+  promptVersion String
+  inputSummary String?
+  outputJson   Json?
+  modelId      String?
+  createdAt    DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  recommendations Recommendation[]
+
+  @@map("ai_runs")
+}
+
+model Recommendation {
+  id          String             @id @default(cuid())
+  projectId   String
+  aiRunId     String?
+  type        String
+  title       String
+  description String?
+  payload     Json?
+  status      RecommendationStatus @default(PENDING)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  project  Project          @relation(fields: [projectId], references: [id])
+  aiRun    AiRun?           @relation(fields: [aiRunId], references: [id])
+  approval ApprovalRequest?
+
+  @@map("recommendations")
+}
+
+model ApprovalRequest {
+  id               String         @id @default(cuid())
+  recommendationId String         @unique
+  requestedById    String
+  status           ApprovalStatus @default(PENDING)
+  reviewedAt       DateTime?
+  reviewNote       String?
+  createdAt        DateTime       @default(now())
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id])
+  requestedBy    User           @relation(fields: [requestedById], references: [id])
+
+  @@map("approval_requests")
+}
+
+enum RecommendationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  DISMISSED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── Compliance ───────────────────────────────────────────────────────────────
+
+model ComplianceProfile {
+  id                String   @id @default(cuid())
+  name              String
+  hipaaEnabled      Boolean  @default(false)
+  piaRequired       Boolean  @default(false)
+  phiHandling       String   @default("none")
+  retentionDays     Int?
+  auditLevel        String   @default("standard")
+  aiAccessPolicy    String   @default("allow")
+  allowedExports    String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  companies Company[]
+  projects  Project[]
+
+  @@map("compliance_profiles")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ─── Diagrams ─────────────────────────────────────────────────────────────────
+
+model Diagram {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  schemaJson  Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project          @relation(fields: [projectId], references: [id])
+  versions DiagramVersion[]
+
+  @@map("diagrams")
+}
+
+model DiagramVersion {
+  id         String   @id @default(cuid())
+  diagramId  String
+  version    Int
+  schemaJson Json
+  createdAt  DateTime @default(now())
+
+  diagram Diagram @relation(fields: [diagramId], references: [id])
+
+  @@map("diagram_versions")
+}

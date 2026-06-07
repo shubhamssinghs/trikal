@@ -1,0 +1,23 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+COPY pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY apps/worker/package.json                 ./apps/worker/
+COPY packages/database/package.json           ./packages/database/
+COPY packages/shared/package.json             ./packages/shared/
+COPY packages/ai/package.json                 ./packages/ai/
+COPY packages/trishul-types/package.json      ./packages/trishul-types/
+
+COPY apps/worker/tsconfig.json  ./apps/worker/
+
+COPY packages/database/src      ./packages/database/src
+COPY packages/database/prisma   ./packages/database/prisma
+COPY packages/shared/src        ./packages/shared/src
+COPY packages/ai/src            ./packages/ai/src
+COPY packages/trishul-types/src ./packages/trishul-types/src
+
+RUN pnpm install
+RUN pnpm --filter @trikal/database db:generate
+
+CMD ["pnpm", "--filter", "@trikal/worker", "dev"]

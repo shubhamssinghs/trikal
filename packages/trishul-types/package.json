@@ -1,0 +1,13 @@
+{
+  "name": "@trishul/types",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "require": "./src/index.js",
+      "import": "./src/index.js",
+      "types": "./src/index.ts"
+    }
+  }
+}

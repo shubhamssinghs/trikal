@@ -1,0 +1,142 @@
+name: trikal
+
+services:
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  web:
+    container_name: trishul-web
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web.dev
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+      - NEXT_PUBLIC_OIDC_ISSUER=${NEXT_PUBLIC_OIDC_ISSUER}
+      - NEXT_PUBLIC_OIDC_CLIENT_ID=${NEXT_PUBLIC_OIDC_CLIENT_ID}
+    volumes:
+      # Hot-reload: mount source dirs from host into container
+      - ../../apps/web/src:/app/apps/web/src
+      - ../../packages/shared/src:/app/packages/shared/src
+      - ../../packages/ui/src:/app/packages/ui/src
+      - ../../packages/trishul-types/src:/app/packages/trishul-types/src
+      # Keep .next build cache inside container (avoid cross-OS issues)
+      - web_next_cache:/app/apps/web/.next
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+  api:
+    container_name: trishul-api
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api.dev
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - ../../.env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-trikal}
+      - REDIS_HOST=redis
+    volumes:
+      # Hot-reload: NestJS watch picks up changes to src
+      - ../../apps/api/src:/app/apps/api/src
+      - ../../packages/shared/src:/app/packages/shared/src
+      - ../../packages/auth/src:/app/packages/auth/src
+      - ../../packages/database/src:/app/packages/database/src
+      - ../../packages/database/prisma:/app/packages/database/prisma
+      - ../../packages/trishul-types/src:/app/packages/trishul-types/src
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Worker ───────────────────────────────────────────────────────────────────
+  worker:
+    container_name: trishul-worker
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.worker.dev
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-trikal}
+      - REDIS_HOST=redis
+    volumes:
+      - ../../apps/worker/src:/app/apps/worker/src
+      - ../../packages/shared/src:/app/packages/shared/src
+      - ../../packages/ai/src:/app/packages/ai/src
+      - ../../packages/database/src:/app/packages/database/src
+      - ../../packages/trishul-types/src:/app/packages/trishul-types/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Infrastructure ───────────────────────────────────────────────────────────
+  postgres:
+    container_name: trishul-postgres
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trikal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-trikal}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trikal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    container_name: trishul-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    container_name: trishul-minio
+    image: minio/minio:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-trikal}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  web_next_cache:

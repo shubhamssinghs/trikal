@@ -1,0 +1,23 @@
+# Replace yourdomain.com with your actual domain
+# For local dev without a domain, use localhost
+
+yourdomain.com {
+    # Serve Next.js frontend
+    handle /* {
+        reverse_proxy web:3000
+    }
+}
+
+api.yourdomain.com {
+    # Serve NestJS API
+    handle /* {
+        reverse_proxy api:4000
+    }
+}
+
+# MinIO console (restrict to internal network in production)
+minio.yourdomain.com {
+    handle /* {
+        reverse_proxy minio:9001
+    }
+}

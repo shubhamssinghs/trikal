@@ -1,0 +1,15 @@
+{
+  "name": "@trikal/auth",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@trishuliam/oauth-client": "^0.1.2",
+    "jose": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

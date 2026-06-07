@@ -1,0 +1,25 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+COPY pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY apps/api/package.json                    ./apps/api/
+COPY packages/database/package.json           ./packages/database/
+COPY packages/shared/package.json             ./packages/shared/
+COPY packages/auth/package.json               ./packages/auth/
+COPY packages/trishul-types/package.json      ./packages/trishul-types/
+
+COPY apps/api/tsconfig.json     ./apps/api/
+COPY apps/api/nest-cli.json     ./apps/api/
+
+COPY packages/database/src      ./packages/database/src
+COPY packages/database/prisma   ./packages/database/prisma
+COPY packages/shared/src        ./packages/shared/src
+COPY packages/auth/src          ./packages/auth/src
+COPY packages/trishul-types/src ./packages/trishul-types/src
+
+RUN pnpm install
+RUN pnpm --filter @trikal/database db:generate
+
+EXPOSE 4000
+CMD ["pnpm", "--filter", "@trikal/api", "dev"]
