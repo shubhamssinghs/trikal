@@ -1,39 +1,15 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
+import { BriefingPanel } from "@/components/briefing-panel";
 
 export const dynamic = "force-dynamic";
 
-const IAPI = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
-
-type Briefing = {
-  greeting: string;
-  topPriorities: { text: string; urgency: string; projectName: string }[];
-  atRiskProjects: { projectName: string; reason: string }[];
-  pendingApprovals: number;
-  openRisks: number;
-  insight: string;
-};
-
-async function getBriefing(): Promise<Briefing | null> {
-  try {
-    const res = await fetch(`${IAPI}/ai/briefing`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return res.json();
-  } catch { return null; }
-}
-
-const urgencyColor: Record<string, string> = {
-  high: "text-red-400 border-red-900/40",
-  medium: "text-amber-400 border-amber-900/40",
-  low: "text-blue-400 border-blue-900/40",
-};
-
 export default async function TodayPage() {
-  const [companies, projects, briefing] = await Promise.all([
+  // Fast DB-backed queries only — the slow AI briefing loads client-side
+  const [companies, projects] = await Promise.all([
     queries.companies().catch(() => []),
     queries.projects().catch(() => []),
-    getBriefing(),
   ]);
 
   const activeProjects = projects.filter((p) => p.status === "ACTIVE");
@@ -47,29 +23,13 @@ export default async function TodayPage() {
           <p className="text-sm text-muted mt-0.5">
             {new Date().toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
-          {briefing?.greeting && <p className="text-sm text-foreground mt-2 italic">{briefing.greeting}</p>}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
 
-            {/* AI Priorities */}
-            {briefing && briefing.topPriorities.length > 0 && (
-              <section className="rounded-lg border border-blue-900/40 bg-surface p-4">
-                <h2 className="text-sm font-medium text-blue-400 mb-3">AI Priorities</h2>
-                <div className="space-y-2">
-                  {briefing.topPriorities.map((p, i) => (
-                    <div key={i} className={`rounded border px-3 py-2 ${urgencyColor[p.urgency] ?? urgencyColor.low}`}>
-                      <p className="text-sm text-foreground">{p.text}</p>
-                      <p className="text-xs opacity-60 mt-0.5">{p.projectName} · {p.urgency}</p>
-                    </div>
-                  ))}
-                </div>
-                {briefing.insight && (
-                  <p className="text-xs text-muted mt-3 pt-3 border-t border-border">{briefing.insight}</p>
-                )}
-              </section>
-            )}
+            {/* AI Briefing — loads client-side with its own loader */}
+            <BriefingPanel />
 
             {/* Active Projects */}
             <section className="rounded-lg border border-border bg-surface p-4">
@@ -125,8 +85,8 @@ export default async function TodayPage() {
                 {[
                   { label: "Companies", value: companies.length },
                   { label: "Projects", value: projects.length },
-                  { label: "Approvals", value: briefing?.pendingApprovals ?? "—", highlight: (briefing?.pendingApprovals ?? 0) > 0 },
-                  { label: "Open Risks", value: briefing?.openRisks ?? "—", highlight: (briefing?.openRisks ?? 0) > 0 },
+                  { label: "Active", value: activeProjects.length },
+                  { label: "At Risk", value: atRiskProjects.length, highlight: atRiskProjects.length > 0 },
                 ].map((s) => (
                   <div key={s.label} className="rounded bg-surface-2 px-3 py-2">
                     <p className={`text-lg font-semibold ${s.highlight ? "text-amber-400" : "text-foreground"}`}>{s.value}</p>
