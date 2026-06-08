@@ -1,5 +1,8 @@
 FROM node:20-slim
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# openssl: Prisma engines. procps: provides `ps`, required by `nest start --watch`
+# to restart on file changes (without it, hot-reload crashes with spawn ps ENOENT
+# and leaves a stale server process running).
+RUN apt-get update -y && apt-get install -y openssl procps && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
