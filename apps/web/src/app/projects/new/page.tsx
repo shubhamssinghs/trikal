@@ -1,20 +1,17 @@
 import { CreateProjectForm } from "@/components/create-project-form";
 import { queries } from "@/lib/api/queries";
 import Link from "next/link";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewProjectPage() {
   const companies = await queries.companies().catch(() => []);
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/projects" />
-      <main className="max-w-lg mx-auto px-6 py-10">
+    <Shell active="/projects" width="sm">
         <Link href="/projects" className="text-xs text-muted hover:text-foreground">← Projects</Link>
         <h1 className="text-xl font-semibold mt-2 mb-6">New Project</h1>
         <CreateProjectForm companies={companies} />
-      </main>
-    </div>
+      </Shell>
   );
 }

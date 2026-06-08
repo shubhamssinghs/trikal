@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TranscriptUpload } from "@/components/transcript-upload";
 import { KnowledgeSearch } from "@/components/knowledge-search";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +18,7 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
   const transcripts = await getTranscripts(id);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/projects" />
-
-      <main className="max-w-5xl mx-auto px-6 py-6">
+    <Shell active="/projects" width="lg">
         <div className="mb-6">
           <Link href={`/projects/${id}`} className="text-xs text-muted hover:text-foreground">← Project</Link>
           <h1 className="text-xl font-semibold mt-1">Transcripts & Knowledge Base</h1>
@@ -56,7 +53,6 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
             </div>
           </section>
         )}
-      </main>
-    </div>
+      </Shell>
   );
 }

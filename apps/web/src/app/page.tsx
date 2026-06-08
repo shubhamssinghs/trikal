@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +40,7 @@ export default async function TodayPage() {
   const atRiskProjects = projects.filter((p) => p.status === "AT_RISK");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/" />
-
-      <main className="max-w-7xl mx-auto px-6 py-6">
+    <Shell active="/" width="xl">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold">Today</h1>
@@ -163,7 +160,6 @@ export default async function TodayPage() {
             </section>
           </aside>
         </div>
-      </main>
-    </div>
+      </Shell>
   );
 }

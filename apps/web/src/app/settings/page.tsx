@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SettingsForm } from "@/components/settings-form";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +18,7 @@ export default async function SettingsPage() {
   const settings = await getSettings();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/settings" />
-
-      <main className="max-w-2xl mx-auto px-6 py-8">
+    <Shell active="/settings" width="md">
         <h1 className="text-xl font-semibold mb-1">Settings</h1>
         <p className="text-sm text-muted mb-6">Configure your AI provider and API keys. Keys are stored securely and never displayed in full.</p>
 
@@ -30,7 +27,6 @@ export default async function SettingsPage() {
         ) : (
           <p className="text-sm text-red-400">Could not load settings. Is the API running?</p>
         )}
-      </main>
-    </div>
+      </Shell>
   );
 }

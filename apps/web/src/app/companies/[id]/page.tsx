@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   if (!company) return <div className="p-6 text-muted">Company not found.</div>;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/companies" />
-
-      <main className="max-w-5xl mx-auto px-6 py-6">
+    <Shell active="/companies" width="lg">
         <div className="mb-6">
           <Link href="/companies" className="text-xs text-muted hover:text-foreground">← Companies</Link>
           <h1 className="text-xl font-semibold mt-1">{company.name}</h1>
@@ -45,7 +42,6 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </Shell>
   );
 }

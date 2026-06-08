@@ -1,16 +1,13 @@
 import { CreateCompanyForm } from "@/components/create-company-form";
 import Link from "next/link";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export default function NewCompanyPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/companies" />
-      <main className="max-w-lg mx-auto px-6 py-10">
+    <Shell active="/companies" width="sm">
         <Link href="/companies" className="text-xs text-muted hover:text-foreground">← Companies</Link>
         <h1 className="text-xl font-semibold mt-2 mb-6">New Company</h1>
         <CreateCompanyForm />
-      </main>
-    </div>
+      </Shell>
   );
 }

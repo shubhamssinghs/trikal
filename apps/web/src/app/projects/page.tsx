@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +8,7 @@ export default async function ProjectsPage() {
   const projects = await queries.projects().catch(() => []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/projects" />
-
-      <main className="max-w-5xl mx-auto px-6 py-6">
+    <Shell active="/projects" width="lg">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-semibold">Projects</h1>
           <Link href="/projects/new" className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">+ New Project</Link>
@@ -39,7 +36,6 @@ export default async function ProjectsPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </Shell>
   );
 }

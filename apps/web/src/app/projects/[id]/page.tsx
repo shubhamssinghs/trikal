@@ -6,7 +6,7 @@ import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { StakeholdersPanel } from "@/components/stakeholders-panel";
-import { Nav } from "@/components/nav";
+import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +39,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const approved = recommendations.filter((r) => r.status === "APPROVED");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav active="/projects" />
-
-      <main className="max-w-7xl mx-auto px-6 py-6">
+    <Shell active="/projects" width="xl">
         {/* Header */}
         <div className="mb-6">
           <Link href="/projects" className="text-xs text-muted hover:text-foreground">← Projects</Link>
@@ -116,7 +113,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             </section>
           </aside>
         </div>
-      </main>
-    </div>
+      </Shell>
   );
 }
