@@ -6,6 +6,7 @@ import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { StakeholdersPanel } from "@/components/stakeholders-panel";
+import { ProjectActions } from "@/components/project-actions";
 import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
@@ -50,15 +51,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <p className="text-xs text-muted mt-1">{project.company?.name}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Link href={`/projects/${id}/transcripts`}
-                className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
-                + Upload Transcript
-              </Link>
               <span className={`text-xs px-2 py-1 rounded ${
                 project.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
                 project.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
                 "bg-surface-2 text-muted"
               }`}>{project.status}</span>
+              <Link href={`/projects/${id}/transcripts`}
+                className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
+                + Upload Transcript
+              </Link>
+              <ProjectActions project={project} />
             </div>
           </div>
         </div>

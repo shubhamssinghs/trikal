@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
+import { CompanyActions } from "@/components/company-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     <Shell active="/companies" width="lg">
         <div className="mb-6">
           <Link href="/companies" className="text-xs text-muted hover:text-foreground">← Companies</Link>
-          <h1 className="text-xl font-semibold mt-1">{company.name}</h1>
-          {company.description && <p className="text-sm text-muted mt-1">{company.description}</p>}
+          <div className="flex items-start justify-between mt-1">
+            <div>
+              <h1 className="text-xl font-semibold">{company.name}</h1>
+              {company.description && <p className="text-sm text-muted mt-1">{company.description}</p>}
+              {company.website && <a href={company.website} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline mt-1 inline-block">{company.website}</a>}
+            </div>
+            <CompanyActions company={company} />
+          </div>
         </div>
 
         <h2 className="text-sm font-medium text-foreground mb-3">Projects ({projects.length})</h2>

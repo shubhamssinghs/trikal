@@ -92,7 +92,7 @@ model Program {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company   Company   @relation(fields: [companyId], references: [id])
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   projects  Project[]
 
   @@map("programs")
@@ -113,8 +113,8 @@ model Project {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  company       Company       @relation(fields: [companyId], references: [id])
-  program       Program?      @relation(fields: [programId], references: [id])
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  program       Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
   workstreams   Workstream[]
   memberships   Membership[]
   stakeholders  Stakeholder[]
@@ -137,7 +137,7 @@ model Workstream {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("workstreams")
 }
@@ -159,8 +159,8 @@ model Membership {
   role      String   @default("member")
   createdAt DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
   @@map("memberships")
@@ -177,8 +177,8 @@ model Stakeholder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company? @relation(fields: [companyId], references: [id])
-  project Project? @relation(fields: [projectId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("stakeholders")
 }
@@ -195,7 +195,7 @@ model Milestone {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("milestones")
 }
@@ -211,7 +211,7 @@ model Risk {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("risks")
 }
@@ -229,7 +229,7 @@ model MeetingTranscript {
   processedAt    DateTime?
   createdAt      DateTime @default(now())
 
-  project        Project        @relation(fields: [projectId], references: [id])
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   knowledgeItems KnowledgeItem[]
 
   @@map("meeting_transcripts")
@@ -245,8 +245,8 @@ model KnowledgeItem {
   classification DataClassification @default(INTERNAL)
   createdAt      DateTime @default(now())
 
-  project    Project            @relation(fields: [projectId], references: [id])
-  transcript MeetingTranscript? @relation(fields: [transcriptId], references: [id])
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  transcript MeetingTranscript? @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   chunks     KnowledgeChunk[]
 
   @@map("knowledge_items")
@@ -260,7 +260,7 @@ model KnowledgeChunk {
   embedding       Unsupported("vector(512)")?
   createdAt       DateTime @default(now())
 
-  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id])
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
 
   @@map("knowledge_chunks")
 }
@@ -288,7 +288,7 @@ model AiRun {
   modelId      String?
   createdAt    DateTime @default(now())
 
-  project Project? @relation(fields: [projectId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User     @relation(fields: [userId], references: [id])
   recommendations Recommendation[]
 
@@ -307,8 +307,8 @@ model Recommendation {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
-  project  Project          @relation(fields: [projectId], references: [id])
-  aiRun    AiRun?           @relation(fields: [aiRunId], references: [id])
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?           @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
   approval ApprovalRequest?
 
   @@map("recommendations")
@@ -323,7 +323,7 @@ model ApprovalRequest {
   reviewNote       String?
   createdAt        DateTime       @default(now())
 
-  recommendation Recommendation @relation(fields: [recommendationId], references: [id])
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
   requestedBy    User           @relation(fields: [requestedById], references: [id])
 
   @@map("approval_requests")
@@ -391,7 +391,7 @@ model Diagram {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project  Project          @relation(fields: [projectId], references: [id])
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions DiagramVersion[]
 
   @@map("diagrams")
@@ -404,7 +404,7 @@ model DiagramVersion {
   schemaJson Json
   createdAt  DateTime @default(now())
 
-  diagram Diagram @relation(fields: [diagramId], references: [id])
+  diagram Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
 
   @@map("diagram_versions")
 }
