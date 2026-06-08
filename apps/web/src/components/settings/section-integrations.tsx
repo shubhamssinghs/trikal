@@ -10,16 +10,16 @@ type Conn = { id: string; name: string; desc: string; category: string; logo?: s
 // monogram, which is also the graceful fallback if an image fails to load.
 const CONNECTORS: Conn[] = [
   { id: "jira", name: "Jira", desc: "Sync issues, create tickets from action items", category: "Tickets", logo: "https://jira.atlassian.com/favicon.ico", color: "#2684FF" },
-  { id: "azure-devops", name: "Azure DevOps", desc: "Sync work items and boards", category: "Tickets", logo: "https://azure.microsoft.com/favicon.ico", color: "#0078D7" },
+  { id: "azure-devops", name: "Azure DevOps", desc: "Sync work items and boards", category: "Tickets", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/acom_social_icon_azure", color: "#0078D7" },
   { id: "slack", name: "Slack", desc: "Read channels, draft replies", category: "Communication", logo: "https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png", color: "#4A154B" },
   { id: "teams", name: "Microsoft Teams", desc: "Read messages and channels", category: "Communication", logo: "https://teams.microsoft.com/favicon.ico", color: "#6264A7" },
   { id: "gmail", name: "Gmail", desc: "Read & draft emails", category: "Email", logo: "https://www.gstatic.com/images/branding/product/2x/gmail_48dp.png", color: "#EA4335" },
-  { id: "outlook", name: "Outlook", desc: "Read & draft via Microsoft Graph", category: "Email", color: "#0078D4" },
+  { id: "outlook", name: "Outlook", desc: "Read & draft via Microsoft Graph", category: "Email", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/Outlook-Icon-FY26?resMode=sharp2&op_usm=1.5,0.65,15,0&wid=64&hei=64&qlt=100&fit=constrain", color: "#0078D4" },
   { id: "google-calendar", name: "Google Calendar", desc: "Pull upcoming meetings", category: "Calendar", logo: "https://www.gstatic.com/images/branding/product/2x/calendar_48dp.png", color: "#4285F4" },
   { id: "zoom", name: "Zoom", desc: "Meeting recordings & transcripts", category: "Meetings", logo: "https://st1.zoom.us/zoom.ico", color: "#2D8CFF" },
-  { id: "granola", name: "Granola", desc: "Import meeting transcripts", category: "Meetings", color: "#6366F1" },
+  { id: "granola", name: "Granola", desc: "Import meeting transcripts", category: "Meetings", logo: "https://www.granola.ai/logos/rebrand/marque.svg", color: "#6366F1" },
   { id: "google-drive", name: "Google Drive", desc: "Sync documents", category: "Docs", logo: "https://www.gstatic.com/images/branding/product/2x/drive_48dp.png", color: "#1FA463" },
-  { id: "sharepoint", name: "SharePoint", desc: "Sync documents & sites", category: "Docs", color: "#038387" },
+  { id: "sharepoint", name: "SharePoint", desc: "Sync documents & sites", category: "Docs", logo: "https://www.microsoft.com/content/dam/microsoft/bade/images/icons/en-us/456100-icon-sharepoint-17x17.svg", color: "#038387" },
   { id: "confluence", name: "Confluence", desc: "Sync pages & spaces", category: "Docs", logo: "https://confluence.atlassian.com/favicon.ico", color: "#172B4D" },
 ];
 
