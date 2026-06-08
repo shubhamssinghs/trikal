@@ -80,11 +80,50 @@ async function main() {
     await prisma.jobRole.upsert({ where: { label }, update: {}, create: { label } });
   }
 
+  // Built-in AI skills (tools the agent can call). organizationId null = global.
+  const skills = [
+    {
+      slug: "search_project_knowledge",
+      name: "Search project knowledge",
+      description: "Search the current project's knowledge base (transcripts, notes, docs) for information relevant to a query. Call this when answering a question that depends on what was discussed or documented in the project.",
+      handlerKey: "knowledge.search",
+      kind: "action",
+      instructions: null as string | null,
+      inputSchema: { type: "object", properties: { query: { type: "string", description: "What to search for" } }, required: ["query"], additionalProperties: false },
+    },
+    {
+      slug: "create_diagram",
+      name: "Create a diagram",
+      description: "Generate an editable diagram for the project. Call this when a diagram would explain something better than prose — architecture, a data/sequence flow, or a process. Saves a draft the user can open and edit.",
+      handlerKey: "diagram.create",
+      kind: "action",
+      instructions: null as string | null,
+      inputSchema: { type: "object", properties: { kind: { type: "string", enum: ["architecture", "flow", "sequence", "state", "gantt"], description: "Diagram type" }, prompt: { type: "string", description: "What the diagram should depict" } }, required: ["kind"], additionalProperties: false },
+    },
+    {
+      slug: "generate_skill",
+      name: "Skill generator",
+      description: "Author a new reusable skill from a specification: a name, description, when-to-use instructions, and which existing skills it composes. The new skill is created disabled for human review in Settings → Skills.",
+      handlerKey: "skill.create",
+      kind: "action",
+      instructions: "When asked to create or design a new skill, research what it needs, ask clarifying questions if the request is ambiguous, then call generate_skill with a clear description and when-to-use instructions.",
+      inputSchema: { type: "object", properties: { slug: { type: "string" }, name: { type: "string" }, description: { type: "string" }, instructions: { type: "string" }, kind: { type: "string", enum: ["composite", "prompt"] }, composes: { type: "array", items: { type: "string" } } }, required: ["slug", "name", "description"], additionalProperties: false },
+    },
+  ];
+  for (const sk of skills) {
+    await prisma.skill.upsert({
+      where: { slug: sk.slug },
+      update: { name: sk.name, description: sk.description, handlerKey: sk.handlerKey, inputSchema: sk.inputSchema, instructions: sk.instructions },
+      create: { ...sk, organizationId: null, builtin: true, enabled: true },
+    });
+  }
+
   console.log("Seeded:", {
     org: org.name,
     profiles: [standardProfile.name, hipaaProfile.name],
     affiliations: affiliations.length,
     roles: roles.length,
+    skills: skills.length,
   });
 }
 

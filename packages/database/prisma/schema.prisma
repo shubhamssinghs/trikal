@@ -145,6 +145,7 @@ model Project {
   recommendations Recommendation[]
   aiRuns        AiRun[]
   diagrams      Diagram[]
+  agentRuns     AgentRun[]
 
   @@map("projects")
 }
@@ -459,6 +460,70 @@ model Diagram {
   versions     DiagramVersion[]
 
   @@map("diagrams")
+}
+
+// ─── AI Skills platform ────────────────────────────────────────────────────
+
+/// A capability the AI agent can invoke as a tool. Managed from the dashboard.
+model Skill {
+  id             String   @id @default(cuid())
+  organizationId String?  // null = built-in / global
+  slug           String   @unique // tool name exposed to the model (snake_case)
+  name           String
+  description    String   // the tool description the model reads to decide when to call
+  instructions   String?  // extra guidance appended to the system prompt when enabled
+  kind           String   @default("action") // action | composite | prompt
+  handlerKey     String?  // action skills: which coded handler executes it
+  inputSchema    Json     // JSON Schema for the tool input
+  composes       String[] @default([]) // composite skills: slugs it may orchestrate
+  externalAction Boolean  @default(false) // true → routes through the approval queue
+  enabled        Boolean  @default(true)
+  model          String?  // optional model override
+  version        Int      @default(1)
+  builtin        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("skills")
+}
+
+/// One agent invocation — the unit shown in the dashboard's run inspector.
+model AgentRun {
+  id             String   @id @default(cuid())
+  projectId      String?
+  organizationId String
+  userId         String   @default("user_dev")
+  surface        String   // ask | transcript | skill-generator | …
+  goal           String   // the user's request / trigger
+  status         String   @default("running") // running | completed | failed | awaiting_approval
+  answer         String?
+  model          String?
+  tokensIn       Int      @default(0)
+  tokensOut      Int      @default(0)
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  steps   AgentStep[]
+
+  @@map("agent_runs")
+}
+
+/// A single step in an agent run — thinking, tool call, tool result, text, error.
+model AgentStep {
+  id        String   @id @default(cuid())
+  runId     String
+  idx       Int
+  type      String   // thinking | text | tool_call | tool_result | error
+  skillSlug String?
+  title     String?
+  content   Json?
+  createdAt DateTime @default(now())
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("agent_steps")
 }
 
 model DiagramVersion {
