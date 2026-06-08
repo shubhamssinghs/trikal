@@ -1,47 +1,32 @@
-import Link from "next/link";
-import { SettingsForm } from "@/components/settings-form";
 import { Shell } from "@/components/shell";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { PageHeader } from "@/components/ui";
+import { SettingsView } from "@/components/settings/settings-view";
 
 export const dynamic = "force-dynamic";
 
-const IAPI =
-  process.env.INTERNAL_API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:4000/api/v1";
+const IAPI = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-async function getSettings() {
+async function getJson(path: string, fallback: unknown) {
   try {
-    const res = await fetch(`${IAPI}/settings`, { cache: "no-store" });
-    if (!res.ok) return null;
+    const res = await fetch(`${IAPI}${path}`, { cache: "no-store" });
+    if (!res.ok) return fallback;
     return res.json();
-  } catch {
-    return null;
-  }
+  } catch { return fallback; }
 }
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
+  const [settings, profiles] = await Promise.all([
+    getJson("/settings", null),
+    getJson("/compliance-profiles", []),
+  ]);
 
   return (
     <Shell active="/settings" width="xl">
-      <h1 className="text-xl font-semibold mb-1">Settings</h1>
-      <p className="text-sm text-muted mb-6">
-        Configure your AI provider and API keys. Keys are stored securely and
-        never displayed in full.
-      </p>
-
-      <div className="border border-gray-300 rounded-lg p-2 mb-2 flex justify-between items-center">
-        <p className="text-xs text-muted"> Toggle Theme</p>
-        <ThemeToggle />
-      </div>
-
+      <PageHeader title="Settings" subtitle="Manage your workspace, AI, integrations, and compliance." />
       {settings ? (
-        <SettingsForm initial={settings} />
+        <SettingsView initialSettings={settings} initialProfiles={profiles} />
       ) : (
-        <p className="text-sm text-red-400">
-          Could not load settings. Is the API running?
-        </p>
+        <p className="text-sm text-red-500">Could not load settings. Is the API running?</p>
       )}
     </Shell>
   );

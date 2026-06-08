@@ -1,0 +1,12 @@
+-- AlterTable
+ALTER TABLE "app_settings" ADD COLUMN     "approvals" JSONB,
+ADD COLUMN     "chunkOverlap" INTEGER NOT NULL DEFAULT 100,
+ADD COLUMN     "chunkSize" INTEGER NOT NULL DEFAULT 800,
+ADD COLUMN     "dateFormat" TEXT NOT NULL DEFAULT 'medium',
+ADD COLUMN     "defaultTheme" TEXT NOT NULL DEFAULT 'dark',
+ADD COLUMN     "embeddingModel" TEXT NOT NULL DEFAULT 'voyage-3-lite',
+ADD COLUMN     "maxTokens" INTEGER NOT NULL DEFAULT 4096,
+ADD COLUMN     "notifications" JSONB,
+ADD COLUMN     "retrievalTopK" INTEGER NOT NULL DEFAULT 5,
+ADD COLUMN     "temperature" DOUBLE PRECISION NOT NULL DEFAULT 0.3,
+ADD COLUMN     "timezone" TEXT NOT NULL DEFAULT 'UTC';

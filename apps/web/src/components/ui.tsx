@@ -146,6 +146,38 @@ export function Field({ label, children }: { label: string; children: React.Reac
 export const inputClass =
   "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 focus:outline-none transition-colors";
 
+/* ── Toggle ────────────────────────────────────────────────────────────── */
+
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  description?: string;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-4 py-2.5 cursor-pointer">
+      <span className="min-w-0">
+        <span className="block text-sm text-foreground">{label}</span>
+        {description && <span className="block text-xs text-muted mt-0.5">{description}</span>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-surface-2 border border-border"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : "translate-x-1"}`} />
+      </button>
+    </label>
+  );
+}
+
 /* ── StatusBadge ───────────────────────────────────────────────────────── */
 
 const statusStyles: Record<string, string> = {

@@ -13,16 +13,7 @@ export class SettingsController {
   }
 
   @Patch()
-  update(
-    @Body()
-    body: {
-      llmProvider?: string;
-      llmModel?: string;
-      anthropicApiKey?: string;
-      openaiApiKey?: string;
-      voyageApiKey?: string;
-    },
-  ) {
+  update(@Body() body: Record<string, unknown>) {
     return this.settingsService.update(DEV_ORG_ID, body);
   }
 }
