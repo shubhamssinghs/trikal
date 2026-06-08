@@ -23,33 +23,44 @@ export type DiagramSummary = {
   createdAt: string; updatedAt: string;
 };
 
-/** node type key -> { icon, accent color }. Accent tints the node card. */
-const ICON_MAP: Record<string, { icon: LucideIcon; color: string }> = {
+/**
+ * node type key -> icon definition.
+ *  - `svg`   : path to a real service/brand SVG bundled in /public/icons (preferred render).
+ *  - `icon`  : lucide fallback used for generic concepts or if the SVG is missing.
+ *  - `color` : accent color used to tint the lucide fallback box.
+ */
+type IconDef = { icon: LucideIcon; color: string; svg?: string };
+
+const ICON_MAP: Record<string, IconDef> = {
+  // Generic concepts — no brand, keep clean lucide glyphs.
   "generic.user": { icon: User, color: "#64748b" },
   "generic.mobile": { icon: Smartphone, color: "#64748b" },
   "generic.api": { icon: Server, color: "#2563eb" },
   "generic.database": { icon: Database, color: "#16a34a" },
   "generic.queue": { icon: ListOrdered, color: "#d97706" },
   "generic.lock": { icon: Lock, color: "#dc2626" },
-  "aws.cloudfront": { icon: Cloud, color: "#ea580c" },
-  "aws.waf": { icon: ShieldAlert, color: "#dc2626" },
-  "aws.ecs": { icon: Boxes, color: "#ea580c" },
-  "aws.rds": { icon: Database, color: "#2563eb" },
-  "aws.s3": { icon: HardDrive, color: "#16a34a" },
-  "aws.kms": { icon: KeyRound, color: "#dc2626" },
-  "aws.elasticache": { icon: Database, color: "#dc2626" },
-  "aws.alb": { icon: Network, color: "#7c3aed" },
-  "azure.app-service": { icon: AppWindow, color: "#0891b2" },
-  "azure.sql": { icon: Database, color: "#0891b2" },
-  "azure.devops": { icon: GitBranch, color: "#0891b2" },
-  "tools.slack": { icon: MessageSquare, color: "#7c3aed" },
-  "tools.jira": { icon: Ticket, color: "#2563eb" },
-  "tools.teams": { icon: Users, color: "#7c3aed" },
-  "tools.zoom": { icon: Video, color: "#2563eb" },
-  "tools.outlook": { icon: Mail, color: "#0891b2" },
+  // AWS — official service icons.
+  "aws.cloudfront": { icon: Cloud, color: "#ea580c", svg: "/icons/aws/cloudfront.svg" },
+  "aws.waf": { icon: ShieldAlert, color: "#dc2626", svg: "/icons/aws/waf.svg" },
+  "aws.ecs": { icon: Boxes, color: "#ea580c", svg: "/icons/aws/ecs.svg" },
+  "aws.rds": { icon: Database, color: "#2563eb", svg: "/icons/aws/rds.svg" },
+  "aws.s3": { icon: HardDrive, color: "#16a34a", svg: "/icons/aws/s3.svg" },
+  "aws.kms": { icon: KeyRound, color: "#dc2626", svg: "/icons/aws/kms.svg" },
+  "aws.elasticache": { icon: Database, color: "#dc2626", svg: "/icons/aws/elasticache.svg" },
+  "aws.alb": { icon: Network, color: "#7c3aed", svg: "/icons/aws/alb.svg" },
+  // Azure — service icons.
+  "azure.app-service": { icon: AppWindow, color: "#0891b2", svg: "/icons/azure/app-service.svg" },
+  "azure.sql": { icon: Database, color: "#0891b2", svg: "/icons/azure/sql-database.svg" },
+  "azure.devops": { icon: GitBranch, color: "#0891b2", svg: "/icons/azure/devops.svg" },
+  // Tools — brand logos.
+  "tools.slack": { icon: MessageSquare, color: "#7c3aed", svg: "/icons/tools/slack.svg" },
+  "tools.jira": { icon: Ticket, color: "#2563eb", svg: "/icons/tools/jira.svg" },
+  "tools.teams": { icon: Users, color: "#7c3aed", svg: "/icons/tools/teams.svg" },
+  "tools.zoom": { icon: Video, color: "#2563eb", svg: "/icons/tools/zoom.svg" },
+  "tools.outlook": { icon: Mail, color: "#0891b2", svg: "/icons/tools/outlook.svg" },
 };
 
-export function iconFor(type: string): { icon: LucideIcon; color: string } {
+export function iconFor(type: string): IconDef {
   return ICON_MAP[type] ?? { icon: Box, color: "#64748b" };
 }
 

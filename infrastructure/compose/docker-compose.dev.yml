@@ -19,6 +19,8 @@ services:
     volumes:
       # Hot-reload: mount source dirs from host into container
       - ../../apps/web/src:/app/apps/web/src
+      # Static assets (diagram service/brand icons, etc.)
+      - ../../apps/web/public:/app/apps/web/public
       # Config files (so tailwind/postcss/next config edits hot-reload)
       - ../../apps/web/tailwind.config.ts:/app/apps/web/tailwind.config.ts
       - ../../apps/web/postcss.config.js:/app/apps/web/postcss.config.js

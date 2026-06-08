@@ -20,16 +20,21 @@ type NodeData = { label: string; ntype: string };
 
 /** Themed node card with input + output handles. */
 function DiagramNode({ data, selected }: NodeProps<Node<NodeData>>) {
-  const { icon: Icon, color } = iconFor(data.ntype);
+  const { icon: Icon, color, svg } = iconFor(data.ntype);
   return (
     <div
       className="rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 min-w-[120px]"
       style={{ borderColor: selected ? color : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${color}` : undefined }}
     >
       <Handle type="target" position={Position.Left} style={{ background: color, width: 8, height: 8 }} />
-      <span className="grid place-items-center rounded-md shrink-0" style={{ width: 26, height: 26, backgroundColor: `${color}1f`, color }}>
-        <Icon size={15} />
-      </span>
+      {svg ? (
+        // Real service/brand icon. eslint-disable-next-line @next/next/no-img-element
+        <img src={svg} alt="" width={26} height={26} className="shrink-0 object-contain" draggable={false} />
+      ) : (
+        <span className="grid place-items-center rounded-md shrink-0" style={{ width: 26, height: 26, backgroundColor: `${color}1f`, color }}>
+          <Icon size={15} />
+        </span>
+      )}
       <span className="text-xs font-medium text-foreground truncate max-w-[160px]">{data.label}</span>
       <Handle type="source" position={Position.Right} style={{ background: color, width: 8, height: 8 }} />
     </div>
