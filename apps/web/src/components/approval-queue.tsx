@@ -6,10 +6,10 @@ import type { Recommendation } from "@/lib/api/queries";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 async function approve(id: string) {
-  await fetch(`${API_BASE}/ai/recommendations/${id}/approve`, { method: "PATCH" });
+  await fetch(`${API_BASE}/ai/recommendations/${id}/approve`, { credentials: "include", method: "PATCH" });
 }
 async function reject(id: string) {
-  await fetch(`${API_BASE}/ai/recommendations/${id}/reject`, { method: "PATCH" });
+  await fetch(`${API_BASE}/ai/recommendations/${id}/reject`, { credentials: "include", method: "PATCH" });
 }
 
 interface Props {

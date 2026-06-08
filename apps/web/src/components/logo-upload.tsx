@@ -50,7 +50,7 @@ export function LogoUpload({
       try {
         const form = new FormData();
         form.append("file", file);
-        const res = await fetch(`${API_BASE}/companies/${companyId}/logo`, {
+        const res = await fetch(`${API_BASE}/companies/${companyId}/logo`, { credentials: "include",
           method: "POST",
           body: form,
         });
@@ -75,7 +75,7 @@ export function LogoUpload({
     if (companyId) {
       setBusy(true);
       try {
-        await fetch(`${API_BASE}/companies/${companyId}/logo`, { method: "DELETE" });
+        await fetch(`${API_BASE}/companies/${companyId}/logo`, { credentials: "include", method: "DELETE" });
       } catch {
         setError("Failed to remove logo.");
       } finally {
@@ -145,7 +145,7 @@ export function LogoUpload({
 export async function uploadLogo(companyId: string, file: File) {
   const form = new FormData();
   form.append("file", file);
-  await fetch(`${API_BASE}/companies/${companyId}/logo`, {
+  await fetch(`${API_BASE}/companies/${companyId}/logo`, { credentials: "include",
     method: "POST",
     body: form,
   }).catch(() => {});

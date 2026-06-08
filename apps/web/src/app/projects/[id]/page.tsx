@@ -10,30 +10,19 @@ import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { StakeholdersPanel } from "@/components/stakeholders-panel";
 import { ProjectActions } from "@/components/project-actions";
+import { serverFetch } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
-
-const IAPI = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
-
-async function fetchJson<T>(path: string, fallback: T = [] as unknown as T): Promise<T> {
-  try {
-    const res = await fetch(`${IAPI}${path}`, { cache: "no-store" });
-    if (!res.ok) return fallback;
-    return res.json();
-  } catch {
-    return fallback;
-  }
-}
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const [project, recommendations, milestones, risks, stakeholders] = await Promise.all([
-    queries.project(id).catch(() => null),
-    queries.recommendations(id).catch(() => []),
-    fetchJson<unknown[]>(`/milestones?projectId=${id}`),
-    fetchJson<unknown[]>(`/risks?projectId=${id}`),
-    fetchJson<unknown[]>(`/stakeholders?projectId=${id}`),
+    queries.project(id),
+    queries.recommendations(id),
+    serverFetch<unknown[]>(`/milestones?projectId=${id}`, []),
+    serverFetch<unknown[]>(`/risks?projectId=${id}`, []),
+    serverFetch<unknown[]>(`/stakeholders?projectId=${id}`, []),
   ]);
 
   if (!project) {

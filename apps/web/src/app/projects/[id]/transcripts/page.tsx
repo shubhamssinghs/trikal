@@ -4,24 +4,15 @@ import { KnowledgeSearch } from "@/components/knowledge-search";
 import { Shell } from "@/components/shell";
 import { PageHeader, Card, EmptyState } from "@/components/ui";
 import { formatDate } from "@/lib/format";
+import { serverFetch } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
-
-const API_BASE = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
-
-async function getTranscripts(projectId: string) {
-  try {
-    const res = await fetch(`${API_BASE}/transcripts?projectId=${projectId}`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
-  } catch { return []; }
-}
 
 type Transcript = { id: string; title: string; occurredAt: string; processedAt?: string };
 
 export default async function TranscriptsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const transcripts: Transcript[] = await getTranscripts(id);
+  const transcripts: Transcript[] = await serverFetch<Transcript[]>(`/transcripts?projectId=${id}`, []);
   const analysed = transcripts.filter((t) => t.processedAt).length;
 
   return (

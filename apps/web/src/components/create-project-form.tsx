@@ -58,7 +58,7 @@ export function CreateProjectForm({ companies }: { companies: Company[] }) {
 
     setLoading(true); setSubmitError("");
     try {
-      const res = await fetch(`${API_BASE}/projects`, {
+      const res = await fetch(`${API_BASE}/projects`, { credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

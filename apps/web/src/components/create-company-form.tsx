@@ -38,7 +38,7 @@ export function CreateCompanyForm() {
 
     setLoading(true); setSubmitError("");
     try {
-      const res = await fetch(`${API_BASE}/companies`, {
+      const res = await fetch(`${API_BASE}/companies`, { credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined, website: website.trim() || undefined }),

@@ -32,7 +32,7 @@ export function ProjectActions({ project }: { project: Project }) {
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      const res = await fetch(`${API_BASE}/projects/${project.id}`, {
+      const res = await fetch(`${API_BASE}/projects/${project.id}`, { credentials: "include",
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,7 +54,7 @@ export function ProjectActions({ project }: { project: Project }) {
   const remove = async () => {
     setBusy(true); setError("");
     try {
-      const res = await fetch(`${API_BASE}/projects/${project.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/projects/${project.id}`, { credentials: "include", method: "DELETE" });
       if (!res.ok) throw new Error();
       router.push("/projects");
     } catch {

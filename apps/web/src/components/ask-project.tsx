@@ -32,7 +32,7 @@ export function AskProject({ projectId }: Props) {
     setError("");
     setResult(null);
     try {
-      const res = await fetch(`${API_BASE}/ai/ask`, {
+      const res = await fetch(`${API_BASE}/ai/ask`, { credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, question: query }),

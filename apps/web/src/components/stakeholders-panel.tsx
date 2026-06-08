@@ -17,7 +17,7 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const res = await fetch(`${API_BASE}/stakeholders`, {
+    const res = await fetch(`${API_BASE}/stakeholders`, { credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email: email || undefined, role: role || undefined, projectId, companyId }),

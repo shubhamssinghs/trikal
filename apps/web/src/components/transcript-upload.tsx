@@ -36,14 +36,14 @@ export function TranscriptUpload({ projectId }: Props) {
         form.append("projectId", projectId);
         form.append("title", title || file.name);
         form.append("file", file);
-        const res = await fetch(`${API_BASE}/transcripts/upload`, { method: "POST", body: form });
+        const res = await fetch(`${API_BASE}/transcripts/upload`, { credentials: "include", method: "POST", body: form });
         if (!res.ok) throw new Error("Upload failed");
         const t = await res.json();
         transcriptId = t.id;
       } else {
         // Text upload via JSON
         if (!content.trim()) throw new Error("No content");
-        const res = await fetch(`${API_BASE}/transcripts`, {
+        const res = await fetch(`${API_BASE}/transcripts`, { credentials: "include",
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ projectId, title, rawContent: content }),
@@ -54,10 +54,10 @@ export function TranscriptUpload({ projectId }: Props) {
       }
 
       setStatus("ingesting");
-      await fetch(`${API_BASE}/knowledge/ingest/transcript/${transcriptId}`, { method: "POST" });
+      await fetch(`${API_BASE}/knowledge/ingest/transcript/${transcriptId}`, { credentials: "include", method: "POST" });
 
       setStatus("analysing");
-      const analysis = await fetch(`${API_BASE}/ai/analyze/transcript/${transcriptId}`, { method: "POST" }).then((r) => r.json());
+      const analysis = await fetch(`${API_BASE}/ai/analyze/transcript/${transcriptId}`, { credentials: "include", method: "POST" }).then((r) => r.json());
 
       setStatus("done");
       setResult({ recommendations: analysis.recommendationsCreated });

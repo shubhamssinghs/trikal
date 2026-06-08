@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { serverFetch } from "./server";
 
 export type Company = {
   id: string; name: string; description?: string; website?: string;
@@ -19,14 +19,13 @@ export type Recommendation = {
   aiRun?: { agentType: string; modelId?: string; createdAt: string };
 };
 
+// Server-side reads — forward the user's session cookie to the API.
 export const queries = {
-  companies: () => api.get<Company[]>("/companies"),
-  company: (id: string) => api.get<Company>(`/companies/${id}`),
+  companies: () => serverFetch<Company[]>("/companies", []),
+  company: (id: string) => serverFetch<Company | null>(`/companies/${id}`, null),
   projects: (companyId?: string) =>
-    api.get<Project[]>(`/projects${companyId ? `?companyId=${companyId}` : ""}`),
-  project: (id: string) => api.get<Project>(`/projects/${id}`),
+    serverFetch<Project[]>(`/projects${companyId ? `?companyId=${companyId}` : ""}`, []),
+  project: (id: string) => serverFetch<Project | null>(`/projects/${id}`, null),
   recommendations: (projectId: string) =>
-    api.get<Recommendation[]>(`/ai/recommendations?projectId=${projectId}`),
-  approveRec: (id: string) => api.patch<Recommendation>(`/ai/recommendations/${id}/approve`),
-  rejectRec: (id: string) => api.patch<Recommendation>(`/ai/recommendations/${id}/reject`),
+    serverFetch<Recommendation[]>(`/ai/recommendations?projectId=${projectId}`, []),
 };

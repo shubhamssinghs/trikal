@@ -24,7 +24,7 @@ export function CompanyActions({ company }: { company: Company }) {
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      const res = await fetch(`${API_BASE}/companies/${company.id}`, {
+      const res = await fetch(`${API_BASE}/companies/${company.id}`, { credentials: "include",
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: description || undefined, website: website || undefined }),
@@ -42,7 +42,7 @@ export function CompanyActions({ company }: { company: Company }) {
   const remove = async () => {
     setBusy(true); setError("");
     try {
-      const res = await fetch(`${API_BASE}/companies/${company.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/companies/${company.id}`, { credentials: "include", method: "DELETE" });
       if (!res.ok) throw new Error();
       router.push("/companies");
     } catch {

@@ -19,7 +19,7 @@ export function MilestonesPanel({ projectId, milestones: initial }: Props) {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const res = await fetch(`${API_BASE}/milestones?projectId=${projectId}`, {
+    const res = await fetch(`${API_BASE}/milestones?projectId=${projectId}`, { credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, dueDate: dueDate || undefined }),
@@ -31,7 +31,7 @@ export function MilestonesPanel({ projectId, milestones: initial }: Props) {
 
   const toggle = async (m: Milestone) => {
     const next = m.status === "completed" ? "pending" : "completed";
-    await fetch(`${API_BASE}/milestones/${m.id}`, {
+    await fetch(`${API_BASE}/milestones/${m.id}`, { credentials: "include",
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: next }),

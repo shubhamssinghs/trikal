@@ -32,7 +32,7 @@ export function RisksPanel({ projectId, risks: initial }: Props) {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const res = await fetch(`${API_BASE}/risks?projectId=${projectId}`, {
+    const res = await fetch(`${API_BASE}/risks?projectId=${projectId}`, { credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, severity, description: description || undefined }),
@@ -43,7 +43,7 @@ export function RisksPanel({ projectId, risks: initial }: Props) {
   };
 
   const close = async (id: string) => {
-    await fetch(`${API_BASE}/risks/${id}`, {
+    await fetch(`${API_BASE}/risks/${id}`, { credentials: "include",
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "mitigated" }),

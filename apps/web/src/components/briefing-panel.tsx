@@ -29,7 +29,7 @@ export function BriefingPanel() {
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 20_000); // never hang forever
 
-    fetch(`${API_BASE}/ai/briefing`, { signal: ctrl.signal })
+    fetch(`${API_BASE}/ai/briefing`, { credentials: "include", signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => { if (!cancelled) setBriefing(data); })
       .catch(() => { if (!cancelled) setFailed(true); })

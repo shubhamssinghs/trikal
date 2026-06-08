@@ -27,12 +27,12 @@ export function ComplianceSection({ initialProfiles }: { initialProfiles: unknow
   const [creating, setCreating] = useState(false);
 
   const refresh = async () => {
-    const res = await fetch(`${API_BASE}/compliance-profiles`).then((r) => r.json()).catch(() => null);
+    const res = await fetch(`${API_BASE}/compliance-profiles`, { credentials: "include" }).then((r) => r.json()).catch(() => null);
     if (res) setProfiles(res);
   };
 
   const remove = async (id: string) => {
-    await fetch(`${API_BASE}/compliance-profiles/${id}`, { method: "DELETE" }).catch(() => {});
+    await fetch(`${API_BASE}/compliance-profiles/${id}`, { credentials: "include", method: "DELETE" }).catch(() => {});
     refresh();
   };
 
@@ -95,7 +95,7 @@ function ProfileModal({ profile, onClose, onSaved }: { profile: Profile | null; 
     setBusy(true);
     const body = { name, hipaaEnabled, piaRequired, phiHandling, auditLevel, aiAccessPolicy, allowedExports };
     const url = profile ? `${API_BASE}/compliance-profiles/${profile.id}` : `${API_BASE}/compliance-profiles`;
-    await fetch(url, { method: profile ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    await fetch(url, { credentials: "include", method: profile ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
     setBusy(false);
     onSaved();
   };
