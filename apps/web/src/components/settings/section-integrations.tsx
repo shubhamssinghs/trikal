@@ -9,8 +9,9 @@ type Conn = { id: string; name: string; desc: string; category: string; logo?: s
 // assets). Ones without a public first-party logo fall back to a brand-coloured
 // monogram, which is also the graceful fallback if an image fails to load.
 const CONNECTORS: Conn[] = [
-  { id: "jira", name: "Jira", desc: "Sync issues, create tickets from action items", category: "Tickets", logo: "https://jira.atlassian.com/favicon.ico", color: "#2684FF" },
-  { id: "azure-devops", name: "Azure DevOps", desc: "Sync work items and boards", category: "Tickets", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/acom_social_icon_azure", color: "#0078D7" },
+  { id: "jira", name: "Jira", desc: "Sync issues, create tickets from action items", category: "Tickets & Boards", logo: "https://jira.atlassian.com/favicon.ico", color: "#2684FF" },
+  { id: "azure-devops", name: "Azure DevOps", desc: "Sync work items and boards", category: "Tickets & Boards", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/acom_social_icon_azure", color: "#0078D7" },
+  { id: "trello", name: "Trello", desc: "Sync cards and boards", category: "Tickets & Boards", logo: "https://trello.com/favicon.ico", color: "#0079BF" },
   { id: "slack", name: "Slack", desc: "Read channels, draft replies", category: "Communication", logo: "https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png", color: "#4A154B" },
   { id: "teams", name: "Microsoft Teams", desc: "Read messages and channels", category: "Communication", logo: "https://teams.microsoft.com/favicon.ico", color: "#6264A7" },
   { id: "gmail", name: "Gmail", desc: "Read & draft emails", category: "Email", logo: "https://www.gstatic.com/images/branding/product/2x/gmail_48dp.png", color: "#EA4335" },
@@ -23,7 +24,7 @@ const CONNECTORS: Conn[] = [
   { id: "confluence", name: "Confluence", desc: "Sync pages & spaces", category: "Docs", logo: "https://confluence.atlassian.com/favicon.ico", color: "#172B4D" },
 ];
 
-const CATEGORIES = ["Tickets", "Communication", "Email", "Calendar", "Meetings", "Docs"];
+const CATEGORIES = ["Tickets & Boards", "Communication", "Email", "Calendar", "Meetings", "Docs"];
 
 function Logo({ name, logo, color }: { name: string; logo?: string; color: string }) {
   const [failed, setFailed] = useState(false);
