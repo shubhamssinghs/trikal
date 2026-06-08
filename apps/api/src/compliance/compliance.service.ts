@@ -9,6 +9,7 @@ type ProfileInput = {
   retentionDays?: number | null;
   auditLevel?: string;
   aiAccessPolicy?: string;
+  allowedExports?: string[];
 };
 
 @Injectable()
@@ -32,6 +33,7 @@ export class ComplianceService {
         retentionDays: data.retentionDays ?? null,
         auditLevel: data.auditLevel ?? "standard",
         aiAccessPolicy: data.aiAccessPolicy ?? "allow",
+        allowedExports: data.allowedExports ?? [],
       },
     });
   }

@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "./select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+
+const SEVERITIES = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
 
 interface Risk { id: string; title: string; description?: string; severity: string; status: string; mitigationPlan?: string }
 interface Props { projectId: string; risks: Risk[] }
@@ -59,13 +66,8 @@ export function RisksPanel({ projectId, risks: initial }: Props) {
             className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details (optional)" rows={2}
             className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none resize-none" />
-          <div className="flex gap-2">
-            <select value={severity} onChange={(e) => setSeverity(e.target.value)}
-              className="rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-foreground focus:outline-none">
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+          <div className="flex gap-2 items-center">
+            <div className="w-32"><Select value={severity} onChange={setSeverity} options={SEVERITIES} /></div>
             <button type="submit" className="rounded bg-blue-700 hover:bg-blue-600 px-3 py-1.5 text-xs text-white">Save</button>
             <button type="button" onClick={() => setAdding(false)} className="rounded bg-surface-2 hover:bg-border px-3 py-1.5 text-xs text-foreground">Cancel</button>
           </div>

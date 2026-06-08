@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { Plus, Trash2, Pencil, ShieldCheck } from "lucide-react";
 import { Card, Button, Modal, Field, inputClass, Toggle, EmptyState } from "../ui";
+import { Select, MultiSelect } from "../select";
+
+const EXPORT_OPTIONS = [
+  { value: "pdf", label: "PDF" },
+  { value: "docx", label: "DOCX" },
+  { value: "csv", label: "CSV" },
+  { value: "markdown", label: "Markdown" },
+];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 type Profile = {
   id: string; name: string; hipaaEnabled: boolean; piaRequired: boolean;
   phiHandling: string; auditLevel: string; aiAccessPolicy: string; retentionDays?: number | null;
+  allowedExports?: string[];
   _count?: { companies: number; projects: number };
 };
 
@@ -77,13 +86,14 @@ function ProfileModal({ profile, onClose, onSaved }: { profile: Profile | null; 
   const [phiHandling, setPhi] = useState(profile?.phiHandling ?? "none");
   const [auditLevel, setAudit] = useState(profile?.auditLevel ?? "standard");
   const [aiAccessPolicy, setAi] = useState(profile?.aiAccessPolicy ?? "allow");
+  const [allowedExports, setExports] = useState<string[]>(profile?.allowedExports ?? []);
   const [busy, setBusy] = useState(false);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setBusy(true);
-    const body = { name, hipaaEnabled, piaRequired, phiHandling, auditLevel, aiAccessPolicy };
+    const body = { name, hipaaEnabled, piaRequired, phiHandling, auditLevel, aiAccessPolicy, allowedExports };
     const url = profile ? `${API_BASE}/compliance-profiles/${profile.id}` : `${API_BASE}/compliance-profiles`;
     await fetch(url, { method: profile ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
     setBusy(false);
@@ -100,21 +110,18 @@ function ProfileModal({ profile, onClose, onSaved }: { profile: Profile | null; 
         </div>
         <div className="grid grid-cols-3 gap-3">
           <Field label="PHI handling">
-            <select value={phiHandling} onChange={(e) => setPhi(e.target.value)} className={inputClass}>
-              <option value="none">None</option><option value="redact">Redact</option><option value="strict">Strict</option>
-            </select>
+            <Select value={phiHandling} onChange={setPhi} options={[{ value: "none", label: "None" }, { value: "redact", label: "Redact" }, { value: "strict", label: "Strict" }]} />
           </Field>
           <Field label="Audit level">
-            <select value={auditLevel} onChange={(e) => setAudit(e.target.value)} className={inputClass}>
-              <option value="minimal">Minimal</option><option value="standard">Standard</option><option value="full">Full</option>
-            </select>
+            <Select value={auditLevel} onChange={setAudit} options={[{ value: "minimal", label: "Minimal" }, { value: "standard", label: "Standard" }, { value: "full", label: "Full" }]} />
           </Field>
           <Field label="AI access">
-            <select value={aiAccessPolicy} onChange={(e) => setAi(e.target.value)} className={inputClass}>
-              <option value="allow">Allow</option><option value="restricted">Restricted</option><option value="blocked">Blocked</option>
-            </select>
+            <Select value={aiAccessPolicy} onChange={setAi} options={[{ value: "allow", label: "Allow" }, { value: "restricted", label: "Restricted" }, { value: "blocked", label: "Blocked" }]} />
           </Field>
         </div>
+        <Field label="Allowed exports">
+          <MultiSelect value={allowedExports} onChange={setExports} options={EXPORT_OPTIONS} placeholder="Select export formats…" />
+        </Field>
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>

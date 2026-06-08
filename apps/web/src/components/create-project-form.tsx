@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Company } from "@/lib/api/queries";
 import { Card, Button, Field, inputClass } from "./ui";
+import { Select } from "./select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -91,9 +92,7 @@ export function CreateProjectForm({ companies }: { companies: Company[] }) {
         </Field>
 
         <Field label="Company *">
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
-            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <Select value={companyId} onChange={setCompanyId} options={companies.map((c) => ({ value: c.id, label: c.name }))} placeholder="Select a company…" />
           {err("companyId") && <p className="text-xs text-red-500 mt-1">{errors.companyId}</p>}
         </Field>
 
@@ -113,9 +112,7 @@ export function CreateProjectForm({ companies }: { companies: Company[] }) {
         {err("dates") && <p className="text-xs text-red-500 -mt-2">{errors.dates}</p>}
 
         <Field label="Compliance Profile">
-          <select value={complianceProfileId} onChange={(e) => setComplianceProfileId(e.target.value)} className={inputClass}>
-            {COMPLIANCE_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
+          <Select value={complianceProfileId} onChange={setComplianceProfileId} options={COMPLIANCE_PROFILES.map((p) => ({ value: p.id, label: p.label }))} />
         </Field>
 
         {submitError && <p className="text-sm text-red-500">{submitError}</p>}

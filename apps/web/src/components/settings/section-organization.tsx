@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card, Field, inputClass } from "../ui";
+import { Select } from "../select";
 import { SaveBar } from "./section-ai";
 import { saveSettings } from "./save";
 import type { Settings } from "./settings-view";
@@ -44,14 +45,10 @@ export function OrganizationSection({ settings, onChange }: { settings: Settings
       <Card title="Locale">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Timezone">
-            <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className={inputClass}>
-              {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-            </select>
+            <Select value={timezone} onChange={setTimezone} options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))} />
           </Field>
           <Field label="Date format">
-            <select value={dateFormat} onChange={(e) => setDateFormat(e.target.value)} className={inputClass}>
-              {DATE_FORMATS.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-            </select>
+            <Select value={dateFormat} onChange={setDateFormat} options={DATE_FORMATS.map((d) => ({ value: d.id, label: d.label }))} />
           </Field>
         </div>
       </Card>

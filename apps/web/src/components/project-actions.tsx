@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { Modal, Button, Field, inputClass } from "./ui";
+import { Select } from "./select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const STATUSES = ["ACTIVE", "AT_RISK", "ON_HOLD", "COMPLETED", "ARCHIVED"];
@@ -75,9 +76,7 @@ export function ProjectActions({ project }: { project: Project }) {
             <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} /></Field>
             <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={`${inputClass} resize-none`} /></Field>
             <Field label="Status">
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
-                {STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
-              </select>
+              <Select value={status} onChange={setStatus} options={STATUSES.map((s) => ({ value: s, label: s.replace("_", " ") }))} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start date"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} /></Field>

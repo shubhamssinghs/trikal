@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card, Button, Field, inputClass } from "../ui";
+import { Select } from "../select";
 import { saveSettings } from "./save";
 import type { Settings } from "./settings-view";
 
@@ -67,9 +68,7 @@ export function AiSection({ settings, onChange }: { settings: Settings; onChange
           ))}
         </div>
         <Field label="Model">
-          <select value={model} onChange={(e) => setModel(e.target.value)} className={inputClass}>
-            {MODELS[provider].map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
+          <Select value={model} onChange={setModel} options={MODELS[provider].map((m) => ({ value: m.id, label: m.label }))} />
         </Field>
       </Card>
 
