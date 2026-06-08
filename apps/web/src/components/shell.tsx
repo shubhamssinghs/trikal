@@ -6,6 +6,7 @@ const MAX_WIDTHS: Record<string, string> = {
   md: "max-w-3xl",
   lg: "max-w-5xl",
   xl: "max-w-7xl",
+  full: "max-w-none",
 };
 
 export function Shell({

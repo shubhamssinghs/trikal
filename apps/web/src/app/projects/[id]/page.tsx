@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Upload, CheckCircle2 } from "lucide-react";
+import { Upload, CheckCircle2, Workflow } from "lucide-react";
 import { queries } from "@/lib/api/queries";
 import { formatDate } from "@/lib/format";
 import { Shell } from "@/components/shell";
@@ -58,6 +58,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <>
             <Link href={`/projects/${id}/transcripts`}>
               <Button variant="primary"><Upload size={14} /> Upload Transcript</Button>
+            </Link>
+            <Link href={`/projects/${id}/diagrams`}>
+              <Button variant="secondary"><Workflow size={14} /> Diagrams</Button>
             </Link>
             <ProjectActions project={project} />
           </>
