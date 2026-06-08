@@ -39,14 +39,23 @@ function edgeShapeToFlow(shape?: string) {
 }
 type EdgeData = { lineStyle: string; shape: string; color?: string; animated?: boolean };
 
+const DEFAULT_EDGE_COLOR = "#94a3b8"; // slate-400 — reads on both light & dark canvases
+
 function styledEdge(e: Edge): Edge {
   const d = (e.data ?? {}) as EdgeData;
+  const color = d.color || DEFAULT_EDGE_COLOR;
   return {
     ...e,
     type: edgeShapeToFlow(d.shape),
     animated: !!d.animated,
-    markerEnd: { type: MarkerType.ArrowClosed, color: d.color },
-    style: { strokeDasharray: edgeStyleToDash(d.lineStyle), stroke: d.color },
+    markerEnd: { type: MarkerType.ArrowClosed, color },
+    // Inline stroke + label styles (not CSS classes) so PNG export renders
+    // the lines and label pills instead of dropping them / filling them black.
+    style: { strokeDasharray: edgeStyleToDash(d.lineStyle), stroke: color, strokeWidth: 1.5 },
+    labelStyle: { fill: "#1e293b", fontSize: 12, fontWeight: 600 },
+    labelBgStyle: { fill: "#ffffff", fillOpacity: 0.92, stroke: "#e2e8f0", strokeWidth: 1 },
+    labelBgPadding: [6, 3],
+    labelBgBorderRadius: 4,
   };
 }
 
