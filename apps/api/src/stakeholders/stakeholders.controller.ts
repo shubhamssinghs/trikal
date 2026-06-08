@@ -3,6 +3,12 @@ import { StakeholdersService } from "./stakeholders.service";
 
 const DEV_ORG_ID = "org_dev";
 
+type Body_ = {
+  name?: string; email?: string; managerId?: string | null;
+  affiliationId?: string | null; jobRoleId?: string | null; orgUnitId?: string | null;
+  projectId?: string; companyId?: string;
+};
+
 @Controller("stakeholders")
 export class StakeholdersController {
   constructor(private readonly stakeholdersService: StakeholdersService) {}
@@ -15,12 +21,12 @@ export class StakeholdersController {
   }
 
   @Post()
-  create(@Body() body: { name: string; email?: string; role?: string; notes?: string; affiliation?: string; organization?: string; managerId?: string | null; projectId?: string; companyId?: string }) {
+  create(@Body() body: Body_) {
     return this.stakeholdersService.create(body);
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() body: { name?: string; email?: string; role?: string; notes?: string; affiliation?: string; organization?: string; managerId?: string | null }) {
+  update(@Param("id") id: string, @Body() body: Body_) {
     return this.stakeholdersService.update(id, body);
   }
 

@@ -4,6 +4,7 @@ import { DatabaseModule } from "./database/database.module";
 import { StorageModule } from "./storage/storage.module";
 import { SettingsModule } from "./settings/settings.module";
 import { ComplianceModule } from "./compliance/compliance.module";
+import { LookupsModule } from "./lookups/lookups.module";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { CompaniesModule } from "./companies/companies.module";
@@ -22,6 +23,7 @@ import { StakeholdersModule } from "./stakeholders/stakeholders.module";
     StorageModule,
     SettingsModule,
     ComplianceModule,
+    LookupsModule,
     AuthModule,
     HealthModule,
     CompaniesModule,

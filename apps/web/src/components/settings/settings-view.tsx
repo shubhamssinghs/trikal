@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Bot, Plug, ShieldCheck, CheckSquare, Bell, Building2, Palette, Users, Lock,
+  Bot, Plug, ShieldCheck, CheckSquare, Bell, Building2, Palette, Users, Lock, Database,
 } from "lucide-react";
 import { AiSection } from "./section-ai";
 import { IntegrationsSection } from "./section-integrations";
@@ -13,6 +13,7 @@ import { OrganizationSection } from "./section-organization";
 import { AppearanceSection } from "./section-appearance";
 import { MembersSection } from "./section-members";
 import { SecuritySection } from "./section-security";
+import { MasterDataSection } from "./section-master-data";
 
 export type Settings = Record<string, unknown> & {
   orgName: string;
@@ -33,6 +34,7 @@ const SECTIONS = [
   { id: "approvals", label: "Approvals", icon: CheckSquare },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "organization", label: "Organization", icon: Building2 },
+  { id: "master-data", label: "Master Data", icon: Database },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "members", label: "Members & Roles", icon: Users },
   { id: "security", label: "Security", icon: Lock },
@@ -75,6 +77,7 @@ export function SettingsView({
         {active === "approvals" && <ApprovalsSection settings={settings} onChange={setSettings} />}
         {active === "notifications" && <NotificationsSection settings={settings} onChange={setSettings} />}
         {active === "organization" && <OrganizationSection settings={settings} onChange={setSettings} />}
+        {active === "master-data" && <MasterDataSection />}
         {active === "appearance" && <AppearanceSection settings={settings} onChange={setSettings} />}
         {active === "members" && <MembersSection />}
         {active === "security" && <SecuritySection settings={settings} />}

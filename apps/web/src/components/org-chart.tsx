@@ -8,7 +8,7 @@ import { AffiliationBadge } from "./affiliation";
 
 export interface OrgStakeholder {
   id: string; name: string; email?: string; role?: string;
-  affiliation?: string; organization?: string; managerId?: string | null;
+  affiliation?: string; affiliationColor?: string; organization?: string; managerId?: string | null;
 }
 
 type Node = OrgStakeholder & { children: Node[] };
@@ -32,7 +32,7 @@ function NodeCard({ n }: { n: Node }) {
         <div className="text-left">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-foreground whitespace-nowrap">{n.name || "Unnamed"}</p>
-            <AffiliationBadge value={n.affiliation} />
+            <AffiliationBadge label={n.affiliation} color={n.affiliationColor} />
           </div>
           {(n.role || n.organization) && (
             <p className="text-xs text-muted whitespace-nowrap">

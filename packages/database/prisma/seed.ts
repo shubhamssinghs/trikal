@@ -55,7 +55,37 @@ async function main() {
     },
   });
 
-  console.log("Seeded:", { org: org.name, profiles: [standardProfile.name, hipaaProfile.name], settings: "app_settings" });
+  // Affiliations (with colors)
+  const affiliations = [
+    { label: "Client", color: "#3b82f6" },
+    { label: "Consultant", color: "#8b5cf6" },
+    { label: "Vendor", color: "#f59e0b" },
+    { label: "Partner", color: "#10b981" },
+    { label: "Internal", color: "#64748b" },
+  ];
+  for (const a of affiliations) {
+    await prisma.affiliation.upsert({ where: { label: a.label }, update: {}, create: a });
+  }
+
+  // Platform-relevant roles
+  const roles = [
+    "Executive Sponsor", "CEO", "CTO", "VP Engineering", "Program Manager",
+    "Project Manager", "Technical Project Manager", "Product Owner", "Product Manager",
+    "Business Analyst", "Solution Architect", "Engineering Lead", "Frontend Developer",
+    "Backend Developer", "Full-stack Developer", "AI / ML Developer", "QA Engineer",
+    "DevOps Engineer", "UX Designer", "UI Designer", "Scrum Master", "Client Contact",
+    "Vendor Contact", "Stakeholder",
+  ];
+  for (const label of roles) {
+    await prisma.jobRole.upsert({ where: { label }, update: {}, create: { label } });
+  }
+
+  console.log("Seeded:", {
+    org: org.name,
+    profiles: [standardProfile.name, hipaaProfile.name],
+    affiliations: affiliations.length,
+    roles: roles.length,
+  });
 }
 
 main()

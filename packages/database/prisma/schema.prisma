@@ -186,15 +186,15 @@ model Membership {
 }
 
 model Stakeholder {
-  id        String   @id @default(cuid())
+  id           String   @id @default(cuid())
   companyId    String?
   projectId    String?
   managerId    String?
+  affiliationId String?
+  jobRoleId    String?
+  orgUnitId    String?
   name         String
   email        String?
-  role         String?
-  affiliation  String?  // client | consultant | vendor | partner | internal
-  organization String?  // their employer / firm
   notes        String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,8 +203,44 @@ model Stakeholder {
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   manager Stakeholder?  @relation("StakeholderReports", fields: [managerId], references: [id], onDelete: SetNull)
   reports Stakeholder[] @relation("StakeholderReports")
+  affiliation Affiliation? @relation(fields: [affiliationId], references: [id], onDelete: SetNull)
+  jobRole     JobRole?     @relation(fields: [jobRoleId], references: [id], onDelete: SetNull)
+  orgUnit     OrgUnit?     @relation(fields: [orgUnitId], references: [id], onDelete: SetNull)
 
   @@map("stakeholders")
+}
+
+// ─── Stakeholder lookups (DB-managed master data) ──────────────────────────────
+
+model Affiliation {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  color     String   @default("#64748b")
+  createdAt DateTime @default(now())
+
+  stakeholders Stakeholder[]
+
+  @@map("affiliations")
+}
+
+model JobRole {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  createdAt DateTime @default(now())
+
+  stakeholders Stakeholder[]
+
+  @@map("job_roles")
+}
+
+model OrgUnit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  stakeholders Stakeholder[]
+
+  @@map("org_units")
 }
 
 // ─── Planning ─────────────────────────────────────────────────────────────────
