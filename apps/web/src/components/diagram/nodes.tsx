@@ -9,6 +9,7 @@ export type NodeData = {
   ntype: string;
   color?: string;
   fontSize?: number;
+  body?: string;
   link?: DLink;
 };
 
@@ -155,9 +156,31 @@ export function GroupNode({ data, selected }: NodeProps<Node<NodeData>>) {
   );
 }
 
+/** Sticky note for leaving annotations — title + optional description body. */
+export function NoteNode({ data, selected }: NodeProps<Node<NodeData>>) {
+  const color = data.color || "#f59e0b";
+  return (
+    <div className="relative w-full h-full" style={{ minWidth: 150, minHeight: 70 }}>
+      <NodeResizer color={color} isVisible={selected} minWidth={150} minHeight={70} />
+      <div
+        className="w-full h-full rounded-md shadow-sm p-2.5 text-left overflow-hidden"
+        style={{ backgroundColor: `${color}1f`, borderLeft: `3px solid ${color}`, outline: selected ? `1px solid ${color}` : undefined }}
+      >
+        <p className="text-xs font-semibold text-foreground leading-snug mb-0.5">{data.label || "Note"}</p>
+        {data.body ? (
+          <p className="text-[11px] text-muted leading-snug whitespace-pre-wrap">{data.body}</p>
+        ) : (
+          <p className="text-[11px] text-muted/60 italic leading-snug">Add a description…</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export const nodeTypes = {
   service: ServiceNode,
   shape: ShapeNode,
   text: TextNode,
   group: GroupNode,
+  note: NoteNode,
 };

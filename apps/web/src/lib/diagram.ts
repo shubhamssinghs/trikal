@@ -13,16 +13,24 @@ export type DNode = {
   x?: number; y?: number;
   width?: number; height?: number;
   color?: string; fontSize?: number;
+  /** Body text for note elements (title = label). */
+  body?: string;
   parentId?: string;
   link?: DLink;
   metadata?: Record<string, unknown>;
 };
+export type EdgeLabelPos = "top" | "center" | "bottom";
 export type DEdge = {
   id: string; from: string; to: string; label?: string;
   style?: "solid" | "dashed" | "dotted";
   shape?: "bezier" | "smooth" | "step" | "straight";
   color?: string;
   animated?: boolean;
+  /** Label placement along the line + its own text/size/background. */
+  labelPos?: EdgeLabelPos;
+  labelSize?: number;
+  labelColor?: string;
+  labelBg?: string;
 };
 export type DLayer = { id: string; label: string; order?: number };
 export type DiagramData = {
@@ -173,7 +181,7 @@ const GLYPHS: Record<string, { icon: LucideIcon; color: string }> = {
   "shape.hexagon": { icon: Hexagon, color: "#64748b" },
   "shape.parallelogram": { icon: RectangleHorizontal, color: "#64748b" },
   "shape.triangle": { icon: Triangle, color: "#64748b" },
-  "shape.note": { icon: StickyNote, color: "#64748b" },
+  note: { icon: StickyNote, color: "#d97706" },
 };
 
 export function iconFor(type: string): IconDef {
@@ -187,7 +195,7 @@ export const NODE_TYPE_OPTIONS = ICON_TYPE_OPTIONS;
 
 /* ── Shape / text / group node families ─────────────────────────────────── */
 
-export type ShapeKind = "rectangle" | "rounded" | "circle" | "diamond" | "cylinder" | "hexagon" | "parallelogram" | "triangle" | "note";
+export type ShapeKind = "rectangle" | "rounded" | "circle" | "diamond" | "cylinder" | "hexagon" | "parallelogram" | "triangle";
 
 export const SHAPE_KINDS: { type: string; kind: ShapeKind; label: string }[] = [
   { type: "shape.rectangle", kind: "rectangle", label: "Rectangle" },
@@ -198,7 +206,6 @@ export const SHAPE_KINDS: { type: string; kind: ShapeKind; label: string }[] = [
   { type: "shape.hexagon", kind: "hexagon", label: "Hexagon" },
   { type: "shape.parallelogram", kind: "parallelogram", label: "Data (I/O)" },
   { type: "shape.triangle", kind: "triangle", label: "Triangle" },
-  { type: "shape.note", kind: "note", label: "Note" },
 ];
 
 export const SHAPE_TYPE_OPTIONS = SHAPE_KINDS.map((s) => ({ value: s.type, label: s.label }));
@@ -216,8 +223,15 @@ export const EDGE_STYLE_OPTIONS = [
   { value: "dotted", label: "Dotted" },
 ];
 
+export const EDGE_LABELPOS_OPTIONS = [
+  { value: "top", label: "Above line" },
+  { value: "center", label: "On line" },
+  { value: "bottom", label: "Below line" },
+];
+
 export const TEXT_TYPE = "text";
 export const GROUP_TYPE = "group";
+export const NOTE_TYPE = "note";
 
 export function shapeKindOf(type: string): ShapeKind | null {
   const found = SHAPE_KINDS.find((s) => s.type === type);
@@ -226,12 +240,14 @@ export function shapeKindOf(type: string): ShapeKind | null {
 export const isShape = (type: string) => type.startsWith("shape.");
 export const isText = (type: string) => type === TEXT_TYPE;
 export const isGroup = (type: string) => type === GROUP_TYPE;
-export const isIconNode = (type: string) => !isShape(type) && !isText(type) && !isGroup(type);
+export const isNote = (type: string) => type === NOTE_TYPE;
+export const isIconNode = (type: string) => !isShape(type) && !isText(type) && !isGroup(type) && !isNote(type);
 
 /** Which React Flow node renderer to use for a given diagram node type. */
-export function rfTypeFor(type: string): "service" | "shape" | "text" | "group" {
+export function rfTypeFor(type: string): "service" | "shape" | "text" | "group" | "note" {
   if (isGroup(type)) return "group";
   if (isText(type)) return "text";
+  if (isNote(type)) return "note";
   if (isShape(type)) return "shape";
   return "service";
 }
@@ -243,6 +259,7 @@ export const PALETTE: { category: string; items: { type: string; label: string }
     items: [
       { type: GROUP_TYPE, label: "Group / container" },
       { type: TEXT_TYPE, label: "Text label" },
+      { type: NOTE_TYPE, label: "Note" },
     ],
   },
   { category: "Shapes", items: SHAPE_KINDS.map((s) => ({ type: s.type, label: s.label })) },
@@ -279,6 +296,7 @@ export const PALETTE: { category: string; items: { type: string; label: string }
 export function defaultLabelFor(type: string): string {
   if (isGroup(type)) return "Group";
   if (isText(type)) return "Text";
+  if (isNote(type)) return "Note title";
   const shape = SHAPE_KINDS.find((s) => s.type === type);
   if (shape) return shape.label;
   for (const cat of PALETTE) {

@@ -4,23 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls,
-  MiniMap, addEdge, useNodesState, useEdgesState, useReactFlow, ConnectionMode,
+  MiniMap, addEdge, reconnectEdge, useNodesState, useEdgesState, useReactFlow, ConnectionMode,
   type Node, type Edge, type Connection, MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
-import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search, Maximize, Minimize } from "lucide-react";
+import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search, Maximize, Minimize, Keyboard, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  type DiagramData, type DNode, type DEdge, type DLink,
-  ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS,
-  PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, defaultLabelFor, iconFor,
+  type DiagramData, type DNode, type DEdge, type DLink, type EdgeLabelPos,
+  ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS, EDGE_LABELPOS_OPTIONS,
+  PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, isNote, defaultLabelFor, iconFor,
   LINK_TYPES, linkTypeMeta, linkHref,
 } from "@/lib/diagram";
 import type { LayoutDir } from "./layout";
 import { nodeTypes, type NodeData } from "./nodes";
+import { edgeTypes } from "./edges";
 import { autoLayout } from "./layout";
-import { Button, inputClass } from "../ui";
+import { Button, inputClass, Modal } from "../ui";
 import { Select } from "../select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
@@ -30,36 +31,23 @@ const TOOLBTN = "inline-flex items-center gap-1 h-8 rounded-lg border border-bor
 
 /* ── serialization helpers ──────────────────────────────────────────────── */
 
-function edgeStyleToDash(style?: string) {
-  if (style === "dashed") return "6 4";
-  if (style === "dotted") return "2 3";
-  return undefined;
-}
-function edgeShapeToFlow(shape?: string) {
-  if (shape === "bezier") return "default";
-  if (shape === "step") return "step";
-  if (shape === "straight") return "straight";
-  return "smoothstep";
-}
-type EdgeData = { lineStyle: string; shape: string; color?: string; animated?: boolean };
+type EdgeData = {
+  lineStyle: string; shape: string; color?: string; animated?: boolean;
+  labelPos?: EdgeLabelPos; labelSize?: number; labelColor?: string; labelBg?: string;
+};
 
 const DEFAULT_EDGE_COLOR = "#94a3b8"; // slate-400 — reads on both light & dark canvases
 
 function styledEdge(e: Edge): Edge {
   const d = (e.data ?? {}) as EdgeData;
   const color = d.color || DEFAULT_EDGE_COLOR;
+  // The LabeledEdge component owns rendering (path, selection highlight, label).
   return {
     ...e,
-    type: edgeShapeToFlow(d.shape),
+    type: "labeled",
     animated: !!d.animated,
     markerEnd: { type: MarkerType.ArrowClosed, color },
-    // Inline stroke + label styles (not CSS classes) so PNG export renders
-    // the lines and label pills instead of dropping them / filling them black.
-    style: { strokeDasharray: edgeStyleToDash(d.lineStyle), stroke: color, strokeWidth: 1.5 },
-    labelStyle: { fill: "#1e293b", fontSize: 12, fontWeight: 600 },
-    labelBgStyle: { fill: "#ffffff", fillOpacity: 0.92, stroke: "#e2e8f0", strokeWidth: 1 },
-    labelBgPadding: [6, 3],
-    labelBgBorderRadius: 4,
+    style: { stroke: color },
   };
 }
 
@@ -70,7 +58,7 @@ function toFlow(data: DiagramData): { nodes: Node<NodeData>[]; edges: Edge[] } {
       id: n.id,
       type: rfType,
       position: { x: n.x ?? 80 + (i % 4) * 240, y: n.y ?? 80 + Math.floor(i / 4) * 160 },
-      data: { label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize, link: n.link },
+      data: { label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize, body: n.body, link: n.link },
     };
     if (typeof n.width === "number") node.width = n.width;
     if (typeof n.height === "number") node.height = n.height;
@@ -80,7 +68,10 @@ function toFlow(data: DiagramData): { nodes: Node<NodeData>[]; edges: Edge[] } {
   const edges: Edge[] = data.edges.map((e) =>
     styledEdge({
       id: e.id, source: e.from, target: e.to, label: e.label,
-      data: { lineStyle: e.style ?? "solid", shape: e.shape ?? "smooth", color: e.color, animated: e.animated },
+      data: {
+        lineStyle: e.style ?? "solid", shape: e.shape ?? "smooth", color: e.color, animated: e.animated,
+        labelPos: e.labelPos ?? "center", labelSize: e.labelSize, labelColor: e.labelColor, labelBg: e.labelBg,
+      },
     }),
   );
   return { nodes, edges };
@@ -92,7 +83,7 @@ function fromFlow(title: string, description: string, nodes: Node<NodeData>[], e
     x: Math.round(n.position.x), y: Math.round(n.position.y),
     width: typeof n.width === "number" ? Math.round(n.width) : undefined,
     height: typeof n.height === "number" ? Math.round(n.height) : undefined,
-    color: n.data.color, fontSize: n.data.fontSize, link: n.data.link,
+    color: n.data.color, fontSize: n.data.fontSize, body: n.data.body, link: n.data.link,
   }));
   const dedges: DEdge[] = edges.map((e) => {
     const d = (e.data ?? {}) as EdgeData;
@@ -103,6 +94,7 @@ function fromFlow(title: string, description: string, nodes: Node<NodeData>[], e
       shape: d.shape as DEdge["shape"],
       color: d.color,
       animated: d.animated || undefined,
+      labelPos: d.labelPos, labelSize: d.labelSize, labelColor: d.labelColor, labelBg: d.labelBg,
     };
   });
   return { title, description, style: "default", layers: [], nodes: dnodes, edges: dedges };
@@ -126,6 +118,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const [linkType, setLinkType] = useState("knowledge");
   const [layoutDir, setLayoutDir] = useState<LayoutDir>("LR");
   const [full, setFull] = useState(false);
+  const [help, setHelp] = useState(false);
   const [targets, setTargets] = useState<LinkTargets>({});
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const idRef = useRef(initial.nodes.length + initial.edges.length + 1);
@@ -153,16 +146,38 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const node = nodes.find((n) => n.id === selNode) ?? null;
   const edge = edges.find((e) => e.id === selEdge) ?? null;
 
-  const onConnect = useCallback(
-    (c: Connection) =>
-      setEdges((eds) =>
-        addEdge(
-          styledEdge({ ...c, id: `e${Date.now()}`, data: { lineStyle: "solid", shape: "smooth" } } as Edge),
-          eds,
-        ),
-      ),
-    [setEdges],
-  );
+  /* ── undo / redo history ──────────────────────────────────────────────── */
+  const past = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
+  const future = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
+  const snap = () => ({ nodes: JSON.parse(JSON.stringify(nodes)) as Node<NodeData>[], edges: JSON.parse(JSON.stringify(edges)) as Edge[] });
+  const record = () => { past.current.push(snap()); if (past.current.length > 60) past.current.shift(); future.current = []; };
+  const undo = () => {
+    const prev = past.current.pop();
+    if (!prev) return;
+    future.current.push(snap());
+    setNodes(prev.nodes); setEdges(prev.edges); setSelNode(null); setSelEdge(null);
+  };
+  const redo = () => {
+    const nxt = future.current.pop();
+    if (!nxt) return;
+    past.current.push(snap());
+    setNodes(nxt.nodes); setEdges(nxt.edges); setSelNode(null); setSelEdge(null);
+  };
+
+  const onConnect = (c: Connection) => {
+    record();
+    setEdges((eds) => addEdge(styledEdge({ ...c, id: `e${Date.now()}`, data: { lineStyle: "solid", shape: "smooth" } } as Edge), eds));
+  };
+
+  /* ── reconnect: drag an edge endpoint onto a different handle ──────────── */
+  const reconnectOk = useRef(true);
+  const onReconnectStart = () => { reconnectOk.current = false; };
+  const onReconnect = (oldEdge: Edge, newConn: Connection) => {
+    reconnectOk.current = true;
+    record();
+    setEdges((els) => reconnectEdge(oldEdge, newConn, els));
+  };
+  const onReconnectEnd = () => { reconnectOk.current = true; }; // dropped in empty space → keep edge
 
   const addNode = (type: string) => {
     const rect = wrapRef.current?.getBoundingClientRect();
@@ -177,9 +192,22 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
       data: { label: defaultLabelFor(type), ntype: type },
     };
     if (isGroup(type)) { n.width = 260; n.height = 170; n.zIndex = -1; }
+    else if (isNote(type)) { n.width = 190; n.height = 96; }
     else if (isShape(type)) { n.width = 130; n.height = 64; }
+    record();
     setNodes((nds) => [...nds, n]);
     setSelEdge(null); setSelNode(id);
+  };
+
+  const duplicate = () => {
+    if (!selNode) return;
+    const src = nodes.find((n) => n.id === selNode);
+    if (!src) return;
+    record();
+    const id = `n${idRef.current++}`;
+    const copy: Node<NodeData> = { ...src, id, selected: false, position: { x: src.position.x + 28, y: src.position.y + 28 }, data: { ...src.data } };
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), copy]);
+    setSelNode(id); setSelEdge(null);
   };
 
   const patchNode = (patch: Partial<NodeData>) => {
@@ -188,10 +216,12 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   };
   const changeNodeType = (newType: string) => {
     if (!selNode) return;
+    record();
     setNodes((nds) => nds.map((n) => (n.id === selNode ? { ...n, type: rfTypeFor(newType), data: { ...n.data, ntype: newType } } : n)));
   };
   const deleteNode = () => {
     if (!selNode) return;
+    record();
     setNodes((nds) => nds.filter((n) => n.id !== selNode));
     setEdges((eds) => eds.filter((e) => e.source !== selNode && e.target !== selNode));
     setSelNode(null);
@@ -210,15 +240,44 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   };
   const deleteEdge = () => {
     if (!selEdge) return;
+    record();
     setEdges((eds) => eds.filter((e) => e.id !== selEdge));
     setSelEdge(null);
   };
 
+  const deleteSelection = () => {
+    if (selEdge) deleteEdge();
+    else if (selNode) deleteNode();
+  };
+
   const tidy = (dir: LayoutDir = layoutDir) => {
+    record();
     setLayoutDir(dir);
     setNodes((nds) => autoLayout(nds, edges, dir));
     setTimeout(() => fitView({ duration: 300 }), 60);
   };
+
+  // Keyboard shortcuts (see the ? help panel for the full list).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      const mod = e.metaKey || e.ctrlKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === "s") { e.preventDefault(); save(); return; }
+      if (mod && k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (mod && k === "y") { e.preventDefault(); redo(); return; }
+      if (typing) return;
+      if (mod && k === "d") { e.preventDefault(); duplicate(); return; }
+      if (k === "backspace" || k === "delete") { e.preventDefault(); deleteSelection(); return; }
+      if (k === "f") { fitView({ duration: 300 }); return; }
+      if (k === "escape") { setSelNode(null); setSelEdge(null); return; }
+      if (k === "?" || (e.shiftKey && k === "/")) { setHelp(true); return; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
 
   const save = async () => {
     setSaving(true); setSaved(false);
@@ -272,6 +331,9 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
         <button onClick={exportPng} title="Export PNG" className={TOOLBTN}>
           <Download size={13} /> PNG
         </button>
+        <button onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" className={`${TOOLBTN} !px-2`}>
+          <Keyboard size={14} />
+        </button>
         <button onClick={() => { setFull((f) => !f); setTimeout(() => fitView({ duration: 200 }), 80); }} title={full ? "Exit full screen" : "Full screen"} className={`${TOOLBTN} !px-2`}>
           {full ? <Minimize size={14} /> : <Maximize size={14} />}
         </button>
@@ -287,12 +349,17 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnectStart={onReconnectStart}
+            onReconnect={onReconnect}
+            onReconnectEnd={onReconnectEnd}
+            onNodeDragStart={() => record()}
             onSelectionChange={({ nodes: sn, edges: se }) => { setSelNode(sn[0]?.id ?? null); setSelEdge(se[0]?.id ?? null); }}
-            deleteKeyCode={["Backspace", "Delete"]}
+            deleteKeyCode={null}
             fitView
             proOptions={{ hideAttribution: true }}
           >
@@ -304,14 +371,20 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
 
         {/* Inspector */}
         {node && (
-          <Inspector title={isGroup(node.data.ntype) ? "Group" : isText(node.data.ntype) ? "Text" : "Node"} onDelete={deleteNode}>
-            <Labeled label={isText(node.data.ntype) ? "Text" : "Label"}>
+          <Inspector title={isGroup(node.data.ntype) ? "Group" : isText(node.data.ntype) ? "Text" : isNote(node.data.ntype) ? "Note" : "Node"} onDelete={deleteNode}>
+            <Labeled label={isText(node.data.ntype) ? "Text" : isNote(node.data.ntype) ? "Title" : "Label"}>
               {isText(node.data.ntype) ? (
                 <textarea value={node.data.label} onChange={(e) => patchNode({ label: e.target.value })} rows={3} className={inputClass} />
               ) : (
                 <input value={node.data.label} onChange={(e) => patchNode({ label: e.target.value })} className={inputClass} />
               )}
             </Labeled>
+
+            {isNote(node.data.ntype) && (
+              <Labeled label="Description">
+                <textarea value={node.data.body ?? ""} onChange={(e) => patchNode({ body: e.target.value })} rows={4} className={inputClass} placeholder="Leave a note…" />
+              </Labeled>
+            )}
 
             {isIconNode(node.data.ntype) && (
               <Labeled label="Type"><Select value={node.data.ntype} onChange={changeNodeType} options={ICON_TYPE_OPTIONS} placeholder="type" /></Labeled>
@@ -376,6 +449,20 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
             <Labeled label="Label">
               <input value={(edge.label as string) ?? ""} onChange={(e) => patchEdge({ label: e.target.value })} className={inputClass} placeholder="e.g. HTTPS" />
             </Labeled>
+            {(edge.label as string) ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Labeled label="Label position"><Select value={(edge.data as EdgeData).labelPos ?? "center"} onChange={(v) => patchEdge({ labelPos: v as EdgeLabelPos })} options={EDGE_LABELPOS_OPTIONS} placeholder="position" /></Labeled>
+                  <Labeled label="Text size">
+                    <Select value={String((edge.data as EdgeData).labelSize ?? 12)} onChange={(v) => patchEdge({ labelSize: Number(v) })} options={[10, 11, 12, 14, 16, 20].map((s) => ({ value: String(s), label: `${s}px` }))} placeholder="size" />
+                  </Labeled>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Labeled label="Text color"><ColorRow value={(edge.data as EdgeData).labelColor ?? ""} onChange={(c) => patchEdge({ labelColor: c || undefined })} /></Labeled>
+                  <Labeled label="Label fill"><ColorRow value={(edge.data as EdgeData).labelBg ?? ""} onChange={(c) => patchEdge({ labelBg: c || undefined })} /></Labeled>
+                </div>
+              </>
+            ) : null}
             <Labeled label="Line"><Select value={(edge.data as EdgeData).lineStyle} onChange={(v) => patchEdge({ lineStyle: v })} options={EDGE_STYLE_OPTIONS} placeholder="style" /></Labeled>
             <Labeled label="Routing"><Select value={(edge.data as EdgeData).shape} onChange={(v) => patchEdge({ shape: v })} options={EDGE_SHAPE_OPTIONS} placeholder="routing" /></Labeled>
             <Labeled label="Color"><ColorRow value={(edge.data as EdgeData).color ?? ""} onChange={(c) => patchEdge({ color: c || undefined })} /></Labeled>
@@ -383,9 +470,12 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
               <input type="checkbox" checked={!!(edge.data as EdgeData).animated} onChange={(e) => patchEdge({ animated: e.target.checked })} />
               Animated flow
             </label>
+            <p className="text-[11px] text-muted">Drag either endpoint onto a different dot to reconnect.</p>
           </Inspector>
         )}
       </div>
+
+      {help && <ShortcutsModal onClose={() => setHelp(false)} />}
     </div>
   );
 }
@@ -514,6 +604,36 @@ function DirControl({ value, onChange }: { value: LayoutDir; onChange: (d: Layou
         </button>
       ))}
     </div>
+  );
+}
+
+const SHORTCUTS: { keys: string; action: string }[] = [
+  { keys: "⌘/Ctrl + S", action: "Save diagram" },
+  { keys: "⌘/Ctrl + Z", action: "Undo" },
+  { keys: "⌘/Ctrl + ⇧ + Z", action: "Redo" },
+  { keys: "⌘/Ctrl + Y", action: "Redo" },
+  { keys: "⌘/Ctrl + D", action: "Duplicate selected node" },
+  { keys: "Delete / Backspace", action: "Delete selected node or connection" },
+  { keys: "F", action: "Fit diagram to view" },
+  { keys: "Esc", action: "Deselect" },
+  { keys: "?", action: "Show this help" },
+  { keys: "Drag dot → dot", action: "Connect two nodes" },
+  { keys: "Drag an edge end", action: "Reconnect to a different dot" },
+  { keys: "Scroll / pinch", action: "Zoom · drag canvas to pan" },
+];
+
+function ShortcutsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Keyboard shortcuts" onClose={onClose}>
+      <div className="space-y-1.5">
+        {SHORTCUTS.map((s) => (
+          <div key={s.keys + s.action} className="flex items-center justify-between gap-4 text-xs">
+            <span className="text-muted">{s.action}</span>
+            <kbd className="shrink-0 rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-foreground">{s.keys}</kbd>
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
