@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import {
-  Bot, Plug, ShieldCheck, CheckSquare, Bell, Building2, Palette, Users, Lock, Database,
+  Bot, Plug, ShieldCheck, CheckSquare, Bell, Building2, Palette, Users, Lock, Database, Wrench,
 } from "lucide-react";
 import { AiSection } from "./section-ai";
+import { SkillsSection } from "./section-skills";
 import { IntegrationsSection } from "./section-integrations";
 import { ComplianceSection } from "./section-compliance";
 import { ApprovalsSection } from "./section-approvals";
@@ -29,6 +30,7 @@ export type Settings = Record<string, unknown> & {
 
 const SECTIONS = [
   { id: "ai", label: "AI & Models", icon: Bot },
+  { id: "skills", label: "AI Skills", icon: Wrench },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "compliance", label: "Compliance", icon: ShieldCheck },
   { id: "approvals", label: "Approvals", icon: CheckSquare },
@@ -72,6 +74,7 @@ export function SettingsView({
       {/* Active section */}
       <div className="min-w-0">
         {active === "ai" && <AiSection settings={settings} onChange={setSettings} />}
+        {active === "skills" && <SkillsSection />}
         {active === "integrations" && <IntegrationsSection />}
         {active === "compliance" && <ComplianceSection initialProfiles={initialProfiles} />}
         {active === "approvals" && <ApprovalsSection settings={settings} onChange={setSettings} />}
