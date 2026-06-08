@@ -1,7 +1,8 @@
 import {
   User, Smartphone, Server, Database, ListOrdered, Lock, Cloud, ShieldAlert,
   Boxes, HardDrive, KeyRound, Network, AppWindow, GitBranch, MessageSquare,
-  Ticket, Users, Video, Mail, Box, Workflow, Share2, type LucideIcon,
+  Ticket, Users, Video, Mail, Box, Workflow, Share2,
+  ArrowRightLeft, CalendarClock, Activity, type LucideIcon,
 } from "lucide-react";
 
 export type DNode = {
@@ -23,6 +24,8 @@ export type DLayer = { id: string; label: string; order?: number };
 export type DiagramData = {
   title: string; description?: string; style: string;
   layers: DLayer[]; nodes: DNode[]; edges: DEdge[];
+  /** For text-based (Mermaid) diagram kinds: the raw Mermaid source. */
+  mermaid?: string;
 };
 
 export type DiagramSummary = {
@@ -197,7 +200,11 @@ export function emptyDiagram(title = "Untitled diagram"): DiagramData {
 
 /* ── Diagram kinds (type picker, badges, templates) ─────────────────────── */
 
-export type DiagramKind = "architecture" | "flowchart" | "dfd" | "erd" | "mindmap";
+export type DiagramKind = "architecture" | "flowchart" | "dfd" | "erd" | "mindmap" | "sequence" | "gantt" | "state";
+
+/** Text-based kinds rendered with Mermaid rather than the React Flow canvas. */
+export const MERMAID_KINDS: DiagramKind[] = ["sequence", "gantt", "state"];
+export const isMermaidKind = (kind?: string): boolean => MERMAID_KINDS.includes(kind as DiagramKind);
 
 export const DIAGRAM_KINDS: { value: DiagramKind; label: string; description: string; color: string; icon: LucideIcon }[] = [
   { value: "architecture", label: "Architecture", description: "Cloud / system components & connections", color: "#2563eb", icon: Network },
@@ -205,15 +212,54 @@ export const DIAGRAM_KINDS: { value: DiagramKind; label: string; description: st
   { value: "dfd", label: "Data Flow", description: "Processes, data stores & flows", color: "#d97706", icon: Share2 },
   { value: "erd", label: "ER Diagram", description: "Entities, fields & relationships", color: "#7c3aed", icon: Database },
   { value: "mindmap", label: "Mind Map", description: "Central topic & branches", color: "#db2777", icon: GitBranch },
+  { value: "sequence", label: "Sequence", description: "Time-ordered interactions (Mermaid)", color: "#0891b2", icon: ArrowRightLeft },
+  { value: "gantt", label: "Gantt / Timeline", description: "Tasks across dates (Mermaid)", color: "#ca8a04", icon: CalendarClock },
+  { value: "state", label: "State Machine", description: "States & transitions (Mermaid)", color: "#dc2626", icon: Activity },
 ];
 
 export function kindMeta(kind?: string) {
   return DIAGRAM_KINDS.find((k) => k.value === kind) ?? DIAGRAM_KINDS[0];
 }
 
+/** Starter Mermaid source per text-based kind. */
+export function mermaidTemplate(kind: string): string {
+  switch (kind) {
+    case "gantt":
+      return `gantt
+    title Project Plan
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Design        :a1, 2026-06-01, 7d
+    Build         :after a1, 14d
+    section Phase 2
+    Test          :2026-07-01, 7d
+    Launch        :milestone, 2026-07-10, 0d`;
+    case "state":
+      return `stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review
+    Review --> Approved: sign-off
+    Review --> Draft: changes
+    Approved --> [*]`;
+    default: // sequence
+      return `sequenceDiagram
+    participant U as User
+    participant A as API
+    participant D as Database
+    U->>A: Request
+    A->>D: Query
+    D-->>A: Result
+    A-->>U: Response`;
+  }
+}
+
 /** Starter content for a blank diagram of a given kind. */
 export function templateFor(kind: string, title: string): DiagramData {
   const d = emptyDiagram(title);
+  if (isMermaidKind(kind)) {
+    d.mermaid = mermaidTemplate(kind);
+    return d;
+  }
   switch (kind) {
     case "flowchart":
       d.nodes = [

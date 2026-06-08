@@ -20,10 +20,17 @@ type DEdge = {
   color?: string; animated?: boolean;
 };
 type DLayer = { id: string; label: string; order?: number };
-type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[] };
+type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[]; mermaid?: string };
 
-export const DIAGRAM_KINDS = ["architecture", "flowchart", "dfd", "erd", "mindmap"] as const;
+// React Flow (node/edge) kinds.
+const RF_KINDS = ["architecture", "flowchart", "dfd", "erd", "mindmap"] as const;
+// Mermaid (text) kinds.
+const MERMAID_KINDS = ["sequence", "gantt", "state"] as const;
+export const DIAGRAM_KINDS = [...RF_KINDS, ...MERMAID_KINDS] as const;
 export type DiagramKind = (typeof DIAGRAM_KINDS)[number];
+type RfKind = (typeof RF_KINDS)[number];
+const isMermaidKind = (k: string): k is (typeof MERMAID_KINDS)[number] =>
+  (MERMAID_KINDS as readonly string[]).includes(k);
 
 // Node types the architecture generator may use (keys from the shared icon registry).
 const ARCH_TYPES = [
@@ -47,7 +54,7 @@ Node ids unique; edges reference node ids. Base everything on the provided conte
 
 // Per-kind system prompts. All emit the same DiagramData JSON; only the node
 // vocabulary and intent differ.
-const KIND_PROMPTS: Record<DiagramKind, string> = {
+const KIND_PROMPTS: Record<RfKind, string> = {
   architecture: `You are a solutions architect. Produce a clear cloud/system architecture diagram.
 ${BASE_JSON}
 - "type" MUST be one of: ${ARCH_TYPES.join(", ")}.
@@ -77,8 +84,22 @@ ${BASE_JSON}
 - Edges connect from the centre outward (no labels needed). 8-16 nodes.`,
 };
 
+// Mermaid (text) prompts — output raw Mermaid source, no markdown fences.
+const MERMAID_PROMPTS: Record<(typeof MERMAID_KINDS)[number], string> = {
+  sequence: `You are a technical analyst. Output ONLY valid Mermaid \`sequenceDiagram\` source (no markdown fences, no prose).
+Use participants and ->> (sync) / -->> (response) messages, and opt/alt/loop where useful. Base it on the provided context.`,
+  gantt: `You are a project manager. Output ONLY valid Mermaid \`gantt\` source (no markdown fences, no prose).
+Include "dateFormat YYYY-MM-DD", a title, sections, and tasks with ids/durations/dependencies. Base it on the provided context and timelines.`,
+  state: `You are a systems analyst. Output ONLY valid Mermaid \`stateDiagram-v2\` source (no markdown fences, no prose).
+Use [*] for start/end, states, and labeled transitions. Base it on the provided context.`,
+};
+
 function normalizeKind(k?: string): DiagramKind {
   return (DIAGRAM_KINDS as readonly string[]).includes(String(k)) ? (k as DiagramKind) : "architecture";
+}
+
+function stripFences(s: string): string {
+  return s.trim().replace(/^```(?:mermaid)?\s*/i, "").replace(/\s*```$/, "").trim();
 }
 
 @Injectable()
@@ -182,18 +203,30 @@ export class DiagramsService {
       context ? `\nProject knowledge:\n${context}` : "\n(No knowledge base content yet — produce a sensible default for this kind of project.)",
     ].filter(Boolean).join("\n");
 
-    const raw = await this.ai.complete(KIND_PROMPTS[kind], userPrompt, 4096, organizationId);
+    const systemPrompt = isMermaidKind(kind) ? MERMAID_PROMPTS[kind] : KIND_PROMPTS[kind];
+    const raw = await this.ai.complete(systemPrompt, userPrompt, 4096, organizationId);
     const isRealAi = await this.ai.isConfigured(organizationId);
 
-    let parsed: Partial<DiagramData> | null = null;
-    try {
-      const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-      parsed = JSON.parse(cleaned);
-    } catch {
-      this.logger.warn(`Diagram AI response was not JSON: ${raw.substring(0, 120)}`);
+    let schema: DiagramData;
+    if (isMermaidKind(kind)) {
+      // Text diagram — store the Mermaid source. Fall back to a stub if the AI
+      // returned an error/plain notice rather than usable Mermaid.
+      const mermaid = stripFences(raw);
+      const looksValid = /^(sequenceDiagram|gantt|stateDiagram)/m.test(mermaid);
+      schema = this.normalize(
+        { title: `${project.name} ${kind}`, mermaid: looksValid ? mermaid : `%% ${raw.replace(/\n/g, " ").slice(0, 200)}` },
+        `${project.name} ${kind}`,
+      );
+    } else {
+      let parsed: Partial<DiagramData> | null = null;
+      try {
+        const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+        parsed = JSON.parse(cleaned);
+      } catch {
+        this.logger.warn(`Diagram AI response was not JSON: ${raw.substring(0, 120)}`);
+      }
+      schema = this.normalize(parsed ?? undefined, parsed?.title || `${project.name} ${kind}`, parsed?.description);
     }
-
-    const schema = this.normalize(parsed ?? undefined, parsed?.title || `${project.name} ${kind}`, parsed?.description);
 
     const diagram = await this.prisma.diagram.create({
       data: {
@@ -266,6 +299,7 @@ export class DiagramsService {
       layers,
       nodes,
       edges,
+      mermaid: typeof input?.mermaid === "string" ? input.mermaid : undefined,
     };
   }
 }
