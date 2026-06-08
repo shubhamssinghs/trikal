@@ -19,19 +19,12 @@ export function Shell({
 }) {
   return (
     <div className="h-screen flex overflow-hidden bg-background text-foreground">
-      {/* Fixed sidebar */}
       <Sidebar active={active} />
-
-      {/* Content column */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top header */}
-        <header className="h-14 shrink-0 border-b border-border bg-surface/70 backdrop-blur flex items-center justify-end gap-3 px-6">
-          <ThemeToggle />
-        </header>
-
-        {/* Scrollable main */}
         <main className="flex-1 overflow-y-auto">
-          <div className={`${MAX_WIDTHS[width]} w-full mx-auto px-8 py-8`}>{children}</div>
+          <div className={`${MAX_WIDTHS[width]} w-full mx-auto px-8 pb-8 pt-4`}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

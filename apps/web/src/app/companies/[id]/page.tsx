@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { FolderKanban, ArrowRight, Globe } from "lucide-react";
 import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
+import { PageHeader, Card, StatusBadge, EmptyState, Button } from "@/components/ui";
 import { CompanyActions } from "@/components/company-actions";
 
 export const dynamic = "force-dynamic";
@@ -12,43 +14,62 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     queries.projects(id).catch(() => []),
   ]);
 
-  if (!company) return <div className="p-6 text-muted">Company not found.</div>;
+  if (!company) {
+    return <Shell active="/companies"><p className="text-sm text-muted">Company not found.</p></Shell>;
+  }
 
   return (
-    <Shell active="/companies" width="lg">
-        <div className="mb-6">
-          <Link href="/companies" className="text-xs text-muted hover:text-foreground">← Companies</Link>
-          <div className="flex items-start justify-between mt-1">
-            <div>
-              <h1 className="text-xl font-semibold">{company.name}</h1>
-              {company.description && <p className="text-sm text-muted mt-1">{company.description}</p>}
-              {company.website && <a href={company.website} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline mt-1 inline-block">{company.website}</a>}
-            </div>
-            <CompanyActions company={company} />
-          </div>
-        </div>
+    <Shell active="/companies" width="xl">
+      <PageHeader
+        title={company.name}
+        subtitle={company.description}
+        backHref="/companies"
+        backLabel="Companies"
+        meta={
+          company.website ? (
+            <a href={company.website} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-400">
+              <Globe size={13} /> {company.website}
+            </a>
+          ) : undefined
+        }
+        actions={<CompanyActions company={company} />}
+      />
 
-        <h2 className="text-sm font-medium text-foreground mb-3">Projects ({projects.length})</h2>
+      <Card
+        title={`Projects (${projects.length})`}
+        action={<Link href="/projects/new" className="text-xs text-blue-500 hover:text-blue-400">+ New</Link>}
+      >
         {projects.length === 0 ? (
-          <p className="text-sm text-muted">No projects for this company.</p>
+          <EmptyState
+            icon={<FolderKanban size={28} />}
+            title="No projects yet"
+            description="Create the first project under this company."
+            action={<Link href="/projects/new"><Button>New Project</Button></Link>}
+          />
         ) : (
-          <div className="grid gap-3">
+          <div className="space-y-2">
             {projects.map((p) => (
               <Link key={p.id} href={`/projects/${p.id}`}
-                className="rounded-lg border border-border bg-surface px-5 py-4 hover:border-muted transition-colors flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-foreground">{p.name}</h3>
-                  {p.description && <p className="text-sm text-muted mt-0.5">{p.description}</p>}
+                className="group flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-4 py-3 hover:bg-surface-2/80 hover:border-blue-500/30 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="grid place-items-center w-9 h-9 rounded-lg bg-surface-2 text-muted shrink-0">
+                    <FolderKanban size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-medium text-foreground truncate">{p.name}</h3>
+                    {p.description && <p className="text-xs text-muted truncate">{p.description}</p>}
+                  </div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded ${
-                  p.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
-                  p.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
-                  "bg-surface-2 text-muted"
-                }`}>{p.status}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <StatusBadge status={p.status} />
+                  <ArrowRight size={15} className="text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </Link>
             ))}
           </div>
         )}
-      </Shell>
+      </Card>
+    </Shell>
   );
 }

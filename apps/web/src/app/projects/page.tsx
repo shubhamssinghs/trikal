@@ -10,7 +10,7 @@ export default async function ProjectsPage() {
   const projects = await queries.projects().catch(() => []);
 
   return (
-    <Shell active="/projects" width="lg">
+    <Shell active="/projects" width="xl">
       <PageHeader
         title="Projects"
         subtitle="Every project across your companies."

@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Company } from "@/lib/api/queries";
+import { Card, Button, Field, inputClass } from "./ui";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 const COMPLIANCE_PROFILES = [
   { id: "", label: "Standard (default)" },
   { id: "cp_hipaa", label: "HIPAA / PHI Sensitive" },
-  { id: "cp_standard", label: "Standard" },
 ];
+
+type Errors = { name?: string; companyId?: string; dates?: string };
 
 export function CreateProjectForm({ companies }: { companies: Company[] }) {
   const router = useRouter();
@@ -20,81 +22,109 @@ export function CreateProjectForm({ companies }: { companies: Company[] }) {
   const [startDate, setStartDate] = useState("");
   const [targetEndDate, setTargetEndDate] = useState("");
   const [complianceProfileId, setComplianceProfileId] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !companyId) return;
-    setLoading(true);
-    setError("");
+  const validate = (): Errors => {
+    const e: Errors = {};
+    if (!name.trim()) e.name = "Project name is required.";
+    else if (name.trim().length < 2) e.name = "Name must be at least 2 characters.";
+    if (!companyId) e.companyId = "Select a company.";
+    if (startDate && targetEndDate && new Date(targetEndDate) < new Date(startDate))
+      e.dates = "Target end date must be after the start date.";
+    return e;
+  };
+
+  if (companies.length === 0) {
+    return (
+      <Card>
+        <p className="text-sm text-muted">
+          You need a company first.{" "}
+          <a href="/companies/new" className="text-blue-500 hover:underline">Create a company</a> to add a project.
+        </p>
+      </Card>
+    );
+  }
+
+  const submit = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    const e = validate();
+    setErrors(e);
+    setTouched({ name: true, companyId: true, dates: true });
+    if (Object.keys(e).length) return;
+
+    setLoading(true); setSubmitError("");
     try {
       const res = await fetch(`${API_BASE}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          companyId,
-          description: description || undefined,
-          startDate: startDate || undefined,
-          targetEndDate: targetEndDate || undefined,
+          name: name.trim(), companyId,
+          description: description.trim() || undefined,
+          startDate: startDate ? new Date(startDate).toISOString() : undefined,
+          targetEndDate: targetEndDate ? new Date(targetEndDate).toISOString() : undefined,
           complianceProfileId: complianceProfileId || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error();
       const project = await res.json();
       router.push(`/projects/${project.id}`);
     } catch {
-      setError("Failed to create project. Please try again.");
+      setSubmitError("Failed to create project. Please try again.");
       setLoading(false);
     }
   };
 
+  const err = (k: keyof Errors) => touched[k] && errors[k];
+
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div>
-        <label className="block text-xs font-medium text-muted mb-1">Project Name *</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} required
-          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none"
-          placeholder="Patient Portal Modernization" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted mb-1">Company *</label>
-        <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} required
-          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none">
-          {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted mb-1">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none resize-none"
-          placeholder="What is this project about?" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">Start Date</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+    <Card>
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label="Project Name *">
+          <input value={name} onChange={(e) => setName(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+            placeholder="Patient Portal Modernization"
+            className={`${inputClass} ${err("name") ? "border-red-500 focus:border-red-500 focus:ring-red-500/40" : ""}`} />
+          {err("name") && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+        </Field>
+
+        <Field label="Company *">
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={inputClass}>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          {err("companyId") && <p className="text-xs text-red-500 mt-1">{errors.companyId}</p>}
+        </Field>
+
+        <Field label="Description">
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+            placeholder="What is this project about?" className={`${inputClass} resize-none`} />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Start Date">
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="Target End">
+            <input type="date" value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} className={inputClass} />
+          </Field>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">Target End</label>
-          <input type="date" value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)}
-            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+        {err("dates") && <p className="text-xs text-red-500 -mt-2">{errors.dates}</p>}
+
+        <Field label="Compliance Profile">
+          <select value={complianceProfileId} onChange={(e) => setComplianceProfileId(e.target.value)} className={inputClass}>
+            {COMPLIANCE_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </Field>
+
+        {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={loading}>{loading ? "Creating…" : "Create Project"}</Button>
         </div>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-muted mb-1">Compliance Profile</label>
-        <select value={complianceProfileId} onChange={(e) => setComplianceProfileId(e.target.value)}
-          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none">
-          {COMPLIANCE_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
-      </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      <button type="submit" disabled={loading}
-        className="w-full rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-2 text-sm font-medium text-white transition-colors">
-        {loading ? "Creating..." : "Create Project"}
-      </button>
-    </form>
+      </form>
+    </Card>
   );
 }

@@ -10,7 +10,7 @@ export default async function CompaniesPage() {
   const companies = await queries.companies().catch(() => []);
 
   return (
-    <Shell active="/companies" width="lg">
+    <Shell active="/companies" width="xl">
       <PageHeader
         title="Companies"
         subtitle="Clients and accounts you manage projects under."
