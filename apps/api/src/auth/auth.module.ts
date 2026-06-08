@@ -14,7 +14,7 @@ export class AuthModule implements NestModule {
     // Apply auth middleware globally — routes can opt out via @Public()
     consumer
       .apply(TrishulAuthMiddleware)
-      .exclude("health", "auth/login", "auth/callback", "auth/logout")
+      .exclude("health", "auth/login", "auth/callback", "auth/logout", "auth/me")
       .forRoutes("*");
   }
 }

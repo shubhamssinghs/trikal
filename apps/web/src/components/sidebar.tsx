@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LayoutDashboard, Building2, FolderKanban, Settings } from "lucide-react";
 import { TrikalLogo } from "./trikal-logo";
+import { UserMenu } from "./user-menu";
 
 const LINKS = [
   { href: "/", label: "Today", icon: LayoutDashboard },
@@ -43,7 +44,7 @@ export function Sidebar({ active }: { active?: string }) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border px-3 py-3 shrink-0">
+      <div className="border-t border-border px-3 py-3 shrink-0 space-y-1">
         <Link href="/settings"
           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
             active === "/settings"
@@ -53,6 +54,7 @@ export function Sidebar({ active }: { active?: string }) {
           <Settings size={17} className="opacity-80" />
           Settings
         </Link>
+        <UserMenu />
       </div>
     </aside>
   );
