@@ -10,10 +10,11 @@ import { formatDate } from "@/lib/format";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-export function DiagramsList({ projectId, initial }: { projectId: string; initial: DiagramSummary[] }) {
+export function DiagramsList({ projectId, initial }: { projectId?: string; initial: DiagramSummary[] }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [open, setOpen] = useState(false);
+  const basePath = projectId ? `/projects/${projectId}/diagrams` : "/diagrams";
 
   const remove = async (id: string) => {
     await fetch(`${API_BASE}/diagrams/${id}`, { credentials: "include", method: "DELETE" }).catch(() => {});
@@ -30,7 +31,7 @@ export function DiagramsList({ projectId, initial }: { projectId: string; initia
         <EmptyState
           icon={<Workflow size={28} />}
           title="No diagrams yet"
-          description="Create a diagram — pick a type, then start blank or generate it from this project's knowledge base."
+          description={projectId ? "Create a diagram — pick a type, then start blank or generate it from this project's knowledge base." : "Create a quick diagram — pick a type, then start blank or generate it with AI from a prompt."}
           action={<Button onClick={() => setOpen(true)}><Plus size={14} /> New diagram</Button>}
         />
       ) : (
@@ -40,7 +41,7 @@ export function DiagramsList({ projectId, initial }: { projectId: string; initia
             const Icon = meta.icon;
             return (
               <div key={d.id} className="group relative rounded-xl border border-border bg-surface hover:border-blue-500/40 transition-colors shadow-sm">
-                <Link href={`/projects/${projectId}/diagrams/${d.id}`} className="block p-4">
+                <Link href={`${basePath}/${d.id}`} className="block p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="grid place-items-center w-8 h-8 rounded-lg shrink-0" style={{ backgroundColor: `${meta.color}1f`, color: meta.color }}>
                       <Icon size={16} />
@@ -62,12 +63,12 @@ export function DiagramsList({ projectId, initial }: { projectId: string; initia
         </div>
       )}
 
-      {open && <NewDiagramModal projectId={projectId} onClose={() => setOpen(false)} />}
+      {open && <NewDiagramModal projectId={projectId} basePath={basePath} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function NewDiagramModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+function NewDiagramModal({ projectId, basePath, onClose }: { projectId?: string; basePath: string; onClose: () => void }) {
   const router = useRouter();
   const [kind, setKind] = useState<DiagramKind>("architecture");
   const [prompt, setPrompt] = useState("");
@@ -78,13 +79,13 @@ function NewDiagramModal({ projectId, onClose }: { projectId: string; onClose: (
     setBusy("blank"); setError("");
     const meta = kindMeta(kind);
     const title = `${meta.label} diagram`;
-    const res = await fetch(`${API_BASE}/diagrams?projectId=${projectId}`, {
+    const res = await fetch(`${API_BASE}/diagrams${projectId ? `?projectId=${projectId}` : ""}`, {
       credentials: "include", method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, kind, schemaJson: templateFor(kind, title) }),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     setBusy(null);
-    if (res?.id) router.push(`/projects/${projectId}/diagrams/${res.id}`);
+    if (res?.id) router.push(`${basePath}/${res.id}`);
     else setError("Could not create the diagram.");
   };
 
@@ -93,10 +94,10 @@ function NewDiagramModal({ projectId, onClose }: { projectId: string; onClose: (
     const res = await fetch(`${API_BASE}/diagrams/generate`, {
       credentials: "include", method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, kind, prompt: prompt.trim() || undefined }),
+      body: JSON.stringify({ ...(projectId ? { projectId } : {}), kind, prompt: prompt.trim() || undefined }),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     setBusy(null);
-    if (res?.diagram?.id) router.push(`/projects/${projectId}/diagrams/${res.diagram.id}`);
+    if (res?.diagram?.id) router.push(`${basePath}/${res.diagram.id}`);
     else setError("Generation failed. Check that an AI provider key is set in Settings.");
   };
 

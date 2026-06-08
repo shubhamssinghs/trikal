@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Building2, FolderKanban, Settings } from "lucide-react";
+import { LayoutDashboard, Building2, FolderKanban, Workflow, Settings } from "lucide-react";
 import { TrikalLogo } from "./trikal-logo";
 import { UserMenu } from "./user-menu";
 
@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Today", icon: LayoutDashboard },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/diagrams", label: "Diagrams", icon: Workflow },
 ];
 
 export function Sidebar({ active }: { active?: string }) {

@@ -117,6 +117,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const { screenToFlowPosition, fitView } = useReactFlow();
 
   useEffect(() => {
+    if (!projectId) return; // standalone diagrams have no project entities to link
     fetch(`${API_BASE}/diagrams/link-targets?projectId=${projectId}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : {}))
       .then(setTargets)
@@ -312,6 +313,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
               <ColorRow value={node.data.color ?? ""} onChange={(c) => patchNode({ color: c || undefined })} />
             </Labeled>
 
+            {projectId && (
             <Labeled label="Link to project">
               {node.data.link ? (
                 <div className="flex items-center gap-1.5">
@@ -340,6 +342,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
                 </div>
               )}
             </Labeled>
+            )}
 
             {!isText(node.data.ntype) && (
               <p className="text-[11px] text-muted">Drag the right dot to another node&apos;s left dot to connect. {!isIconNode(node.data.ntype) && "Drag a corner to resize."}</p>

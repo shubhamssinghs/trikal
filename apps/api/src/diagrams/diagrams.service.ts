@@ -120,29 +120,43 @@ export class DiagramsService {
     return project;
   }
 
+  private readonly LIST_SELECT = { id: true, title: true, description: true, kind: true, createdAt: true, updatedAt: true } as const;
+
   listByProject(projectId: string, organizationId: string) {
     return this.prisma.diagram.findMany({
       where: { projectId, project: { organizationId } },
-      select: { id: true, title: true, description: true, kind: true, createdAt: true, updatedAt: true },
+      select: this.LIST_SELECT,
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  /** Standalone diagrams (not tied to a project), owned by the organization. */
+  listStandalone(organizationId: string) {
+    return this.prisma.diagram.findMany({
+      where: { projectId: null, organizationId },
+      select: this.LIST_SELECT,
       orderBy: { updatedAt: "desc" },
     });
   }
 
   async findOne(id: string, organizationId: string) {
     const diagram = await this.prisma.diagram.findFirst({
-      where: { id, project: { organizationId } },
+      // Owned either directly (standalone) or via its project.
+      where: { id, OR: [{ organizationId }, { project: { organizationId } }] },
       include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
     });
     if (!diagram) throw new NotFoundException("Diagram not found");
     return diagram;
   }
 
-  async create(projectId: string, organizationId: string, data: { title?: string; description?: string; kind?: string; schemaJson?: DiagramData }) {
-    await this.assertProject(projectId, organizationId);
+  async create(organizationId: string, data: { title?: string; description?: string; kind?: string; schemaJson?: DiagramData; projectId?: string | null }) {
+    const projectId = data.projectId || null;
+    if (projectId) await this.assertProject(projectId, organizationId);
     const schema = this.normalize(data.schemaJson, data.title || "Untitled diagram", data.description);
     return this.prisma.diagram.create({
       data: {
         projectId,
+        organizationId: projectId ? null : organizationId,
         title: schema.title,
         description: schema.description,
         kind: normalizeKind(data.kind),
@@ -201,25 +215,35 @@ export class DiagramsService {
     };
   }
 
-  /** Generate a diagram of a given kind from project knowledge + an optional focus prompt. */
-  async generate(projectId: string, organizationId: string, prompt?: string, kindInput?: string) {
-    const project = await this.assertProject(projectId, organizationId);
+  /**
+   * Generate a diagram of a given kind. When projectId is given, the project's
+   * knowledge base is used as context; otherwise it's a standalone quick diagram
+   * driven purely by the prompt.
+   */
+  async generate(organizationId: string, opts: { prompt?: string; kind?: string; projectId?: string | null }) {
+    const { prompt, kind: kindInput } = opts;
+    const projectId = opts.projectId || null;
     const kind = normalizeKind(kindInput);
 
-    const query = prompt?.trim() || `${kind} diagram: components, steps, data, relationships, integrations`;
+    const project = projectId ? await this.assertProject(projectId, organizationId) : null;
+    const baseName = project?.name || (prompt?.trim()?.slice(0, 40)) || "Quick";
+
     let context = "";
-    try {
-      const hits = await this.knowledge.searchProject(projectId, query, organizationId);
-      context = hits.map((h, i) => `[${i + 1}] (${h.source?.title ?? "source"}) ${h.content}`).join("\n\n").slice(0, 6000);
-    } catch {
-      context = "";
+    if (projectId) {
+      const query = prompt?.trim() || `${kind} diagram: components, steps, data, relationships, integrations`;
+      try {
+        const hits = await this.knowledge.searchProject(projectId, query, organizationId);
+        context = hits.map((h, i) => `[${i + 1}] (${h.source?.title ?? "source"}) ${h.content}`).join("\n\n").slice(0, 6000);
+      } catch {
+        context = "";
+      }
     }
 
     const userPrompt = [
-      `Project: ${project.name}`,
-      project.description ? `Description: ${project.description}` : "",
-      prompt ? `Focus: ${prompt}` : "",
-      context ? `\nProject knowledge:\n${context}` : "\n(No knowledge base content yet — produce a sensible default for this kind of project.)",
+      project ? `Project: ${project.name}` : "Standalone quick diagram.",
+      project?.description ? `Description: ${project.description}` : "",
+      prompt ? `Request: ${prompt}` : "",
+      context ? `\nProject knowledge:\n${context}` : (projectId ? "\n(No knowledge base content yet — produce a sensible default.)" : ""),
     ].filter(Boolean).join("\n");
 
     const systemPrompt = isMermaidKind(kind) ? MERMAID_PROMPTS[kind] : KIND_PROMPTS[kind];
@@ -233,8 +257,8 @@ export class DiagramsService {
       const mermaid = stripFences(raw);
       const looksValid = /^(sequenceDiagram|gantt|stateDiagram)/m.test(mermaid);
       schema = this.normalize(
-        { title: `${project.name} ${kind}`, mermaid: looksValid ? mermaid : `%% ${raw.replace(/\n/g, " ").slice(0, 200)}` },
-        `${project.name} ${kind}`,
+        { title: `${baseName} ${kind}`, mermaid: looksValid ? mermaid : `%% ${raw.replace(/\n/g, " ").slice(0, 200)}` },
+        `${baseName} ${kind}`,
       );
     } else {
       let parsed: Partial<DiagramData> | null = null;
@@ -244,12 +268,13 @@ export class DiagramsService {
       } catch {
         this.logger.warn(`Diagram AI response was not JSON: ${raw.substring(0, 120)}`);
       }
-      schema = this.normalize(parsed ?? undefined, parsed?.title || `${project.name} ${kind}`, parsed?.description);
+      schema = this.normalize(parsed ?? undefined, parsed?.title || `${baseName} ${kind}`, parsed?.description);
     }
 
     const diagram = await this.prisma.diagram.create({
       data: {
         projectId,
+        organizationId: projectId ? null : organizationId,
         title: schema.title,
         description: schema.description,
         kind,

@@ -7,7 +7,7 @@ type SchemaBody = {
   title?: string;
   description?: string;
   kind?: string;
-  schemaJson?: Parameters<DiagramsService["create"]>[2]["schemaJson"];
+  schemaJson?: Parameters<DiagramsService["create"]>[1]["schemaJson"];
 };
 
 @Controller("diagrams")
@@ -15,8 +15,10 @@ export class DiagramsController {
   constructor(private readonly diagrams: DiagramsService) {}
 
   @Get()
-  list(@Query("projectId") projectId: string) {
-    return this.diagrams.listByProject(projectId, DEV_ORG_ID);
+  list(@Query("projectId") projectId?: string) {
+    return projectId
+      ? this.diagrams.listByProject(projectId, DEV_ORG_ID)
+      : this.diagrams.listStandalone(DEV_ORG_ID);
   }
 
   // Must precede the ":id" route so it is not captured as an id.
@@ -31,13 +33,13 @@ export class DiagramsController {
   }
 
   @Post()
-  create(@Query("projectId") projectId: string, @Body() body: SchemaBody) {
-    return this.diagrams.create(projectId, DEV_ORG_ID, body);
+  create(@Query("projectId") projectId: string | undefined, @Body() body: SchemaBody) {
+    return this.diagrams.create(DEV_ORG_ID, { ...body, projectId: projectId ?? null });
   }
 
   @Post("generate")
-  generate(@Body("projectId") projectId: string, @Body("prompt") prompt?: string, @Body("kind") kind?: string) {
-    return this.diagrams.generate(projectId, DEV_ORG_ID, prompt, kind);
+  generate(@Body("projectId") projectId?: string, @Body("prompt") prompt?: string, @Body("kind") kind?: string) {
+    return this.diagrams.generate(DEV_ORG_ID, { projectId: projectId ?? null, prompt, kind });
   }
 
   @Patch(":id")
