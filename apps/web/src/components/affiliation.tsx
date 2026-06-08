@@ -1,4 +1,4 @@
-/** Tinted pill for a stakeholder's affiliation. Color comes from the DB record. */
+/** Tinted pill for a member's affiliation. Color comes from the DB record. */
 export function AffiliationBadge({ label, color }: { label?: string | null; color?: string | null }) {
   if (!label) return null;
   const c = color || "#64748b";

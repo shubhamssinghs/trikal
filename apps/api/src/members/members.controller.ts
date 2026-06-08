@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from "@nestjs/common";
-import { StakeholdersService } from "./stakeholders.service";
+import { MembersService } from "./members.service";
 
 const DEV_ORG_ID = "org_dev";
 
@@ -9,29 +9,29 @@ type Body_ = {
   projectId?: string; companyId?: string;
 };
 
-@Controller("stakeholders")
-export class StakeholdersController {
-  constructor(private readonly stakeholdersService: StakeholdersService) {}
+@Controller("members")
+export class MembersController {
+  constructor(private readonly membersService: MembersService) {}
 
   @Get()
   findAll(@Query("projectId") projectId?: string, @Query("companyId") companyId?: string) {
-    if (projectId) return this.stakeholdersService.findByProject(projectId, DEV_ORG_ID);
-    if (companyId) return this.stakeholdersService.findByCompany(companyId, DEV_ORG_ID);
+    if (projectId) return this.membersService.findByProject(projectId, DEV_ORG_ID);
+    if (companyId) return this.membersService.findByCompany(companyId, DEV_ORG_ID);
     return [];
   }
 
   @Post()
   create(@Body() body: Body_) {
-    return this.stakeholdersService.create(body);
+    return this.membersService.create(body);
   }
 
   @Patch(":id")
   update(@Param("id") id: string, @Body() body: Body_) {
-    return this.stakeholdersService.update(id, body);
+    return this.membersService.update(id, body);
   }
 
   @Delete(":id")
   remove(@Param("id") id: string) {
-    return this.stakeholdersService.remove(id);
+    return this.membersService.remove(id);
   }
 }

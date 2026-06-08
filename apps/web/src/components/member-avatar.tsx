@@ -20,7 +20,7 @@ function colorFor(seed: string): string {
 }
 
 /** Gravatar photo by email; falls back to a colored initials avatar (generated). */
-export function StakeholderAvatar({ name, email, size = 28 }: { name: string; email?: string; size?: number }) {
+export function MemberAvatar({ name, email, size = 28 }: { name: string; email?: string; size?: number }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 

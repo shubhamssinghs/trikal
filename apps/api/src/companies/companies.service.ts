@@ -27,7 +27,7 @@ export class CompaniesService {
       where: { id, organizationId },
       include: {
         projects: { orderBy: { createdAt: "desc" } },
-        stakeholders: true,
+        members: true,
         complianceProfile: true,
       },
     });

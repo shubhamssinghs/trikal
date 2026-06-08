@@ -98,7 +98,7 @@ model Company {
   organization  Organization @relation(fields: [organizationId], references: [id])
   programs      Program[]
   projects      Project[]
-  stakeholders  Stakeholder[]
+  members       Member[]
 
   @@map("companies")
 }
@@ -136,7 +136,7 @@ model Project {
   program       Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
   workstreams   Workstream[]
   memberships   Membership[]
-  stakeholders  Stakeholder[]
+  members       Member[]
   milestones    Milestone[]
   risks         Risk[]
   transcripts   MeetingTranscript[]
@@ -185,7 +185,7 @@ model Membership {
   @@map("memberships")
 }
 
-model Stakeholder {
+model Member {
   id           String   @id @default(cuid())
   companyId    String?
   projectId    String?
@@ -201,16 +201,16 @@ model Stakeholder {
 
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  manager Stakeholder?  @relation("StakeholderReports", fields: [managerId], references: [id], onDelete: SetNull)
-  reports Stakeholder[] @relation("StakeholderReports")
+  manager Member?  @relation("MemberReports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports Member[] @relation("MemberReports")
   affiliation Affiliation? @relation(fields: [affiliationId], references: [id], onDelete: SetNull)
   jobRole     JobRole?     @relation(fields: [jobRoleId], references: [id], onDelete: SetNull)
   orgUnit     OrgUnit?     @relation(fields: [orgUnitId], references: [id], onDelete: SetNull)
 
-  @@map("stakeholders")
+  @@map("members")
 }
 
-// ─── Stakeholder lookups (DB-managed master data) ──────────────────────────────
+// ─── Member lookups (DB-managed master data) ──────────────────────────────────
 
 model Affiliation {
   id        String   @id @default(cuid())
@@ -218,7 +218,7 @@ model Affiliation {
   color     String   @default("#64748b")
   createdAt DateTime @default(now())
 
-  stakeholders Stakeholder[]
+  members Member[]
 
   @@map("affiliations")
 }
@@ -228,7 +228,7 @@ model JobRole {
   label     String   @unique
   createdAt DateTime @default(now())
 
-  stakeholders Stakeholder[]
+  members Member[]
 
   @@map("job_roles")
 }
@@ -238,7 +238,7 @@ model OrgUnit {
   name      String   @unique
   createdAt DateTime @default(now())
 
-  stakeholders Stakeholder[]
+  members Member[]
 
   @@map("org_units")
 }

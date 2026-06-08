@@ -3,17 +3,17 @@
 import { useRef, useState } from "react";
 import { X, Plus, Minus, Maximize2, Maximize, Minimize } from "lucide-react";
 import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
-import { StakeholderAvatar } from "./stakeholder-avatar";
+import { MemberAvatar } from "./member-avatar";
 import { AffiliationBadge } from "./affiliation";
 
-export interface OrgStakeholder {
+export interface OrgMember {
   id: string; name: string; email?: string; role?: string;
   affiliation?: string; affiliationColor?: string; organization?: string; managerId?: string | null;
 }
 
-type Node = OrgStakeholder & { children: Node[] };
+type Node = OrgMember & { children: Node[] };
 
-function buildTree(list: OrgStakeholder[]): Node[] {
+function buildTree(list: OrgMember[]): Node[] {
   const byId = new Map(list.map((s) => [s.id, { ...s, children: [] as Node[] }]));
   const roots: Node[] = [];
   for (const node of byId.values()) {
@@ -28,7 +28,7 @@ function NodeCard({ n }: { n: Node }) {
   return (
     <li>
       <div className="orgcard inline-flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 shadow-sm">
-        <StakeholderAvatar name={n.name} email={n.email} size={34} />
+        <MemberAvatar name={n.name} email={n.email} size={34} />
         <div className="text-left">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-foreground whitespace-nowrap">{n.name || "Unnamed"}</p>
@@ -48,8 +48,8 @@ function NodeCard({ n }: { n: Node }) {
   );
 }
 
-export function OrgChartModal({ stakeholders, onClose }: { stakeholders: OrgStakeholder[]; onClose: () => void }) {
-  const roots = buildTree(stakeholders);
+export function OrgChartModal({ members, onClose }: { members: OrgMember[]; onClose: () => void }) {
+  const roots = buildTree(members);
   const apiRef = useRef<ReactZoomPanPinchRef | null>(null);
   const treeRef = useRef<HTMLDivElement | null>(null);
   const [full, setFull] = useState(false);
@@ -63,7 +63,7 @@ export function OrgChartModal({ stakeholders, onClose }: { stakeholders: OrgStak
       <div className={`flex flex-col border border-border bg-surface shadow-2xl animate-[scaleIn_140ms_ease-out] overflow-hidden ${full ? "w-screen h-screen rounded-none" : "w-full max-w-5xl h-[80vh] rounded-xl"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5 shrink-0">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Stakeholder Org Chart</h3>
+            <h3 className="text-sm font-semibold text-foreground">Member Org Chart</h3>
             <p className="text-xs text-muted">Reporting structure — scroll to zoom, drag to pan</p>
           </div>
           <div className="flex items-center gap-2">
@@ -75,8 +75,8 @@ export function OrgChartModal({ stakeholders, onClose }: { stakeholders: OrgStak
         </div>
 
         <div className="relative flex-1 orgcanvas">
-          {stakeholders.length === 0 ? (
-            <p className="text-sm text-muted text-center pt-10">No stakeholders yet.</p>
+          {members.length === 0 ? (
+            <p className="text-sm text-muted text-center pt-10">No members yet.</p>
           ) : (
             <TransformWrapper
               ref={apiRef}
@@ -99,7 +99,7 @@ export function OrgChartModal({ stakeholders, onClose }: { stakeholders: OrgStak
           )}
 
           {/* Zoom controls */}
-          {stakeholders.length > 0 && (
+          {members.length > 0 && (
             <div className="absolute bottom-4 right-4 flex flex-col gap-1 rounded-lg border border-border bg-surface/90 backdrop-blur shadow-md p-1">
               <button onClick={() => apiRef.current?.zoomIn()} title="Zoom in" className="grid place-items-center w-7 h-7 rounded text-muted hover:text-foreground hover:bg-surface-2"><Plus size={15} /></button>
               <button onClick={() => apiRef.current?.zoomOut()} title="Zoom out" className="grid place-items-center w-7 h-7 rounded text-muted hover:text-foreground hover:bg-surface-2"><Minus size={15} /></button>

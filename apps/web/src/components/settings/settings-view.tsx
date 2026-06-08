@@ -36,7 +36,7 @@ const SECTIONS = [
   { id: "organization", label: "Organization", icon: Building2 },
   { id: "master-data", label: "Master Data", icon: Database },
   { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "members", label: "Members & Roles", icon: Users },
+  { id: "members", label: "Workspace & Roles", icon: Users },
   { id: "security", label: "Security", icon: Lock },
 ];
 

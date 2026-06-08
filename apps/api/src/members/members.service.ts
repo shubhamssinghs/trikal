@@ -5,9 +5,9 @@ const INCLUDE = {
   affiliation: true,
   jobRole: true,
   orgUnit: true,
-} satisfies Prisma.StakeholderInclude;
+} satisfies Prisma.MemberInclude;
 
-type Row = Prisma.StakeholderGetPayload<{ include: typeof INCLUDE }>;
+type Row = Prisma.MemberGetPayload<{ include: typeof INCLUDE }>;
 
 // Flatten the FK relations into the shape the frontend uses (resolved labels +
 // ids for editing + affiliation color for the badge).
@@ -34,11 +34,11 @@ type Input = {
 };
 
 @Injectable()
-export class StakeholdersService {
+export class MembersService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async findByProject(projectId: string, organizationId: string) {
-    const rows = await this.prisma.stakeholder.findMany({
+    const rows = await this.prisma.member.findMany({
       where: { projectId, project: { organizationId } },
       include: INCLUDE,
       orderBy: { name: "asc" },
@@ -47,7 +47,7 @@ export class StakeholdersService {
   }
 
   async findByCompany(companyId: string, organizationId: string) {
-    const rows = await this.prisma.stakeholder.findMany({
+    const rows = await this.prisma.member.findMany({
       where: { companyId, company: { organizationId } },
       include: INCLUDE,
       orderBy: { name: "asc" },
@@ -56,7 +56,7 @@ export class StakeholdersService {
   }
 
   async create(data: Input) {
-    const row = await this.prisma.stakeholder.create({
+    const row = await this.prisma.member.create({
       data: {
         name: data.name ?? "Unnamed",
         email: data.email,
@@ -73,10 +73,10 @@ export class StakeholdersService {
   }
 
   async update(id: string, data: Input) {
-    const s = await this.prisma.stakeholder.findFirst({ where: { id } });
-    if (!s) throw new NotFoundException("Stakeholder not found");
+    const s = await this.prisma.member.findFirst({ where: { id } });
+    if (!s) throw new NotFoundException("Member not found");
     if (data.managerId === id) data.managerId = null;
-    const row = await this.prisma.stakeholder.update({
+    const row = await this.prisma.member.update({
       where: { id },
       data: {
         name: data.name,
@@ -92,8 +92,8 @@ export class StakeholdersService {
   }
 
   async remove(id: string) {
-    const s = await this.prisma.stakeholder.findFirst({ where: { id } });
-    if (!s) throw new NotFoundException("Stakeholder not found");
-    return this.prisma.stakeholder.delete({ where: { id } });
+    const s = await this.prisma.member.findFirst({ where: { id } });
+    if (!s) throw new NotFoundException("Member not found");
+    return this.prisma.member.delete({ where: { id } });
   }
 }

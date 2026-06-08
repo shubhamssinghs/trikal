@@ -27,7 +27,7 @@ export class ProjectsService {
         workstreams: true,
         milestones: { orderBy: { dueDate: "asc" } },
         risks: { where: { status: "open" } },
-        stakeholders: true,
+        members: true,
         complianceProfile: true,
         _count: {
           select: { knowledgeItems: true, recommendations: true, diagrams: true },

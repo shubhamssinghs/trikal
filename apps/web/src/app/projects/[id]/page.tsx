@@ -8,7 +8,7 @@ import { ApprovalQueue } from "@/components/approval-queue";
 import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
-import { StakeholdersPanel } from "@/components/stakeholders-panel";
+import { MembersPanel } from "@/components/members-panel";
 import { ProjectActions } from "@/components/project-actions";
 import { serverFetch } from "@/lib/api/server";
 
@@ -17,12 +17,12 @@ export const dynamic = "force-dynamic";
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [project, recommendations, milestones, risks, stakeholders] = await Promise.all([
+  const [project, recommendations, milestones, risks, members] = await Promise.all([
     queries.project(id),
     queries.recommendations(id),
     serverFetch<unknown[]>(`/milestones?projectId=${id}`, []),
     serverFetch<unknown[]>(`/risks?projectId=${id}`, []),
-    serverFetch<unknown[]>(`/stakeholders?projectId=${id}`, []),
+    serverFetch<unknown[]>(`/members?projectId=${id}`, []),
   ]);
 
   if (!project) {
@@ -103,7 +103,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
         {/* Sidebar */}
         <aside className="space-y-5">
-          <StakeholdersPanel projectId={id} stakeholders={stakeholders as never} />
+          <MembersPanel projectId={id} members={members as never} />
 
           <Card title="Project Info">
             <dl className="space-y-2.5">
