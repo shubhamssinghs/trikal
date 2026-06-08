@@ -6,11 +6,18 @@ import {
 
 export type DNode = {
   id: string; type: string; label: string; layer?: string;
-  x?: number; y?: number; metadata?: Record<string, unknown>;
+  x?: number; y?: number;
+  width?: number; height?: number;
+  color?: string; fontSize?: number;
+  parentId?: string;
+  metadata?: Record<string, unknown>;
 };
 export type DEdge = {
   id: string; from: string; to: string; label?: string;
   style?: "solid" | "dashed" | "dotted";
+  shape?: "bezier" | "smooth" | "step" | "straight";
+  color?: string;
+  animated?: boolean;
 };
 export type DLayer = { id: string; label: string; order?: number };
 export type DiagramData = {
@@ -64,11 +71,124 @@ export function iconFor(type: string): IconDef {
   return ICON_MAP[type] ?? { icon: Box, color: "#64748b" };
 }
 
-/** All selectable node types, for the editor's add/change-type menu. */
-export const NODE_TYPE_OPTIONS = Object.keys(ICON_MAP).map((value) => ({
-  value,
-  label: value,
-}));
+/** Service/brand icon node types, for the type picker in the inspector. */
+export const ICON_TYPE_OPTIONS = Object.keys(ICON_MAP).map((value) => ({ value, label: value }));
+// Back-compat alias.
+export const NODE_TYPE_OPTIONS = ICON_TYPE_OPTIONS;
+
+/* ── Shape / text / group node families ─────────────────────────────────── */
+
+export type ShapeKind = "rectangle" | "rounded" | "circle" | "diamond" | "cylinder";
+
+export const SHAPE_KINDS: { type: string; kind: ShapeKind; label: string }[] = [
+  { type: "shape.rectangle", kind: "rectangle", label: "Rectangle" },
+  { type: "shape.rounded", kind: "rounded", label: "Rounded" },
+  { type: "shape.circle", kind: "circle", label: "Circle" },
+  { type: "shape.diamond", kind: "diamond", label: "Decision" },
+  { type: "shape.cylinder", kind: "cylinder", label: "Store" },
+];
+
+export const SHAPE_TYPE_OPTIONS = SHAPE_KINDS.map((s) => ({ value: s.type, label: s.label }));
+
+export const EDGE_SHAPE_OPTIONS = [
+  { value: "bezier", label: "Curved" },
+  { value: "smooth", label: "Smoothstep" },
+  { value: "step", label: "Step" },
+  { value: "straight", label: "Straight" },
+];
+
+export const EDGE_STYLE_OPTIONS = [
+  { value: "solid", label: "Solid" },
+  { value: "dashed", label: "Dashed" },
+  { value: "dotted", label: "Dotted" },
+];
+
+export const TEXT_TYPE = "text";
+export const GROUP_TYPE = "group";
+
+export function shapeKindOf(type: string): ShapeKind | null {
+  const found = SHAPE_KINDS.find((s) => s.type === type);
+  return found ? found.kind : null;
+}
+export const isShape = (type: string) => type.startsWith("shape.");
+export const isText = (type: string) => type === TEXT_TYPE;
+export const isGroup = (type: string) => type === GROUP_TYPE;
+export const isIconNode = (type: string) => !isShape(type) && !isText(type) && !isGroup(type);
+
+/** Which React Flow node renderer to use for a given diagram node type. */
+export function rfTypeFor(type: string): "service" | "shape" | "text" | "group" {
+  if (isGroup(type)) return "group";
+  if (isText(type)) return "text";
+  if (isShape(type)) return "shape";
+  return "service";
+}
+
+/** Categorized palette for the editor sidebar. */
+export const PALETTE: { category: string; items: { type: string; label: string }[] }[] = [
+  {
+    category: "Structure",
+    items: [
+      { type: GROUP_TYPE, label: "Group / container" },
+      { type: TEXT_TYPE, label: "Text label" },
+    ],
+  },
+  { category: "Shapes", items: SHAPE_KINDS.map((s) => ({ type: s.type, label: s.label })) },
+  {
+    category: "Generic",
+    items: [
+      { type: "generic.user", label: "User" },
+      { type: "generic.mobile", label: "Mobile" },
+      { type: "generic.api", label: "Service / API" },
+      { type: "generic.database", label: "Database" },
+      { type: "generic.queue", label: "Queue" },
+      { type: "generic.lock", label: "Security" },
+    ],
+  },
+  {
+    category: "AWS",
+    items: [
+      { type: "aws.cloudfront", label: "CloudFront" },
+      { type: "aws.alb", label: "Load Balancer" },
+      { type: "aws.ecs", label: "ECS" },
+      { type: "aws.rds", label: "RDS" },
+      { type: "aws.s3", label: "S3" },
+      { type: "aws.elasticache", label: "ElastiCache" },
+      { type: "aws.waf", label: "WAF" },
+      { type: "aws.kms", label: "KMS" },
+    ],
+  },
+  {
+    category: "Azure",
+    items: [
+      { type: "azure.app-service", label: "App Service" },
+      { type: "azure.sql", label: "SQL Database" },
+      { type: "azure.devops", label: "DevOps" },
+    ],
+  },
+  {
+    category: "Tools",
+    items: [
+      { type: "tools.slack", label: "Slack" },
+      { type: "tools.jira", label: "Jira" },
+      { type: "tools.teams", label: "Teams" },
+      { type: "tools.zoom", label: "Zoom" },
+      { type: "tools.outlook", label: "Outlook" },
+    ],
+  },
+];
+
+/** Default label when adding a node of a given type from the palette. */
+export function defaultLabelFor(type: string): string {
+  if (isGroup(type)) return "Group";
+  if (isText(type)) return "Text";
+  const shape = SHAPE_KINDS.find((s) => s.type === type);
+  if (shape) return shape.label;
+  for (const cat of PALETTE) {
+    const item = cat.items.find((i) => i.type === type);
+    if (item) return item.label;
+  }
+  return "Node";
+}
 
 export function emptyDiagram(title = "Untitled diagram"): DiagramData {
   return { title, description: "", style: "default", layers: [], nodes: [], edges: [] };

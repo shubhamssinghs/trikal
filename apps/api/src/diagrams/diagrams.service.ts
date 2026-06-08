@@ -7,8 +7,18 @@ import { KnowledgeService } from "../knowledge/knowledge.service";
  * Diagram data shape (mirrors @trikal/diagram's DiagramSchema). Kept local so
  * the API has no extra workspace dependency and can hot-reload in dev.
  */
-type DNode = { id: string; type: string; label: string; layer?: string; x?: number; y?: number; metadata?: Record<string, unknown> };
-type DEdge = { id: string; from: string; to: string; label?: string; style?: "solid" | "dashed" | "dotted" };
+type DNode = {
+  id: string; type: string; label: string; layer?: string;
+  x?: number; y?: number; width?: number; height?: number;
+  color?: string; fontSize?: number; parentId?: string;
+  metadata?: Record<string, unknown>;
+};
+type DEdge = {
+  id: string; from: string; to: string; label?: string;
+  style?: "solid" | "dashed" | "dotted";
+  shape?: "bezier" | "smooth" | "step" | "straight";
+  color?: string; animated?: boolean;
+};
 type DLayer = { id: string; label: string; order?: number };
 type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[] };
 
@@ -185,6 +195,11 @@ export class DiagramsService {
         layer: typeof n.layer === "string" ? n.layer : undefined,
         x: hasXY ? n.x : 80 + (i % 4) * 240,
         y: hasXY ? n.y : 80 + Math.floor(i / 4) * 160,
+        width: typeof n.width === "number" ? n.width : undefined,
+        height: typeof n.height === "number" ? n.height : undefined,
+        color: typeof n.color === "string" ? n.color : undefined,
+        fontSize: typeof n.fontSize === "number" ? n.fontSize : undefined,
+        parentId: typeof n.parentId === "string" ? n.parentId : undefined,
         metadata: typeof n.metadata === "object" && n.metadata ? n.metadata : undefined,
       });
     });
@@ -200,6 +215,9 @@ export class DiagramsService {
         to: String(e.to),
         label: e.label ? String(e.label) : undefined,
         style: e.style === "dashed" || e.style === "dotted" ? e.style : "solid",
+        shape: ["bezier", "smooth", "step", "straight"].includes(String(e.shape)) ? e.shape : undefined,
+        color: typeof e.color === "string" ? e.color : undefined,
+        animated: typeof e.animated === "boolean" ? e.animated : undefined,
       });
     });
 
