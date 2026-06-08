@@ -5,10 +5,11 @@ import { Pencil, Trash2, Check, X, Network } from "lucide-react";
 import { StakeholderAvatar } from "./stakeholder-avatar";
 import { OrgChartModal } from "./org-chart";
 import { Select } from "./select";
+import { AffiliationBadge, AFFILIATION_OPTIONS } from "./affiliation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-interface Stakeholder { id: string; name: string; email?: string; role?: string; notes?: string; managerId?: string | null }
+interface Stakeholder { id: string; name: string; email?: string; role?: string; notes?: string; affiliation?: string; organization?: string; managerId?: string | null }
 interface Props { projectId?: string; companyId?: string; stakeholders: Stakeholder[] }
 
 export function StakeholdersPanel({ projectId, companyId, stakeholders: initial }: Props) {
@@ -18,6 +19,8 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  const [affiliation, setAffiliation] = useState("");
+  const [organization, setOrganization] = useState("");
   const [managerId, setManagerId] = useState("");
 
   const managerOptions = [
@@ -32,10 +35,10 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
       credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email: email || undefined, role: role || undefined, managerId: managerId || undefined, projectId, companyId }),
+      body: JSON.stringify({ name, email: email || undefined, role: role || undefined, affiliation: affiliation || undefined, organization: organization || undefined, managerId: managerId || undefined, projectId, companyId }),
     }).then((r) => r.json());
     setStakeholders((prev) => [...prev, res]);
-    setName(""); setEmail(""); setRole(""); setManagerId(""); setAdding(false);
+    setName(""); setEmail(""); setRole(""); setAffiliation(""); setOrganization(""); setManagerId(""); setAdding(false);
   };
 
   const onUpdated = (s: Stakeholder) => setStakeholders((prev) => prev.map((x) => (x.id === s.id ? s : x)));
@@ -63,6 +66,17 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
             className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email"
             className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted">Affiliation</label>
+              <Select value={affiliation} onChange={setAffiliation} options={AFFILIATION_OPTIONS} placeholder="—" />
+            </div>
+            <div>
+              <label className="text-xs text-muted">Organization</label>
+              <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="e.g. Acme Inc"
+                className="w-full rounded border border-border bg-surface-2 px-3 py-[7px] text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+            </div>
+          </div>
           {stakeholders.length > 0 && (
             <div>
               <label className="text-xs text-muted">Reports to</label>
@@ -101,6 +115,8 @@ function StakeholderRow({ stakeholder, all, onUpdated, onDeleted }: {
   const [name, setName] = useState(stakeholder.name);
   const [role, setRole] = useState(stakeholder.role ?? "");
   const [email, setEmail] = useState(stakeholder.email ?? "");
+  const [affiliation, setAffiliation] = useState(stakeholder.affiliation ?? "");
+  const [organization, setOrganization] = useState(stakeholder.organization ?? "");
   const [managerId, setManagerId] = useState(stakeholder.managerId ?? "");
   const [busy, setBusy] = useState(false);
 
@@ -116,7 +132,7 @@ function StakeholderRow({ stakeholder, all, onUpdated, onDeleted }: {
       credentials: "include",
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, role: role || undefined, email: email || undefined, managerId: managerId || null }),
+      body: JSON.stringify({ name, role: role || undefined, email: email || undefined, affiliation: affiliation || undefined, organization: organization || undefined, managerId: managerId || null }),
     }).then((r) => r.json()).catch(() => null);
     setBusy(false);
     if (updated) { onUpdated(updated); setEditing(false); }
@@ -137,6 +153,17 @@ function StakeholderRow({ stakeholder, all, onUpdated, onDeleted }: {
           className="w-full rounded border border-border bg-surface-2 px-2 py-1 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email"
           className="w-full rounded border border-border bg-surface-2 px-2 py-1 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-muted">Affiliation</label>
+            <Select value={affiliation} onChange={setAffiliation} options={AFFILIATION_OPTIONS} placeholder="—" />
+          </div>
+          <div>
+            <label className="text-xs text-muted">Organization</label>
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="e.g. Acme Inc"
+              className="w-full rounded border border-border bg-surface-2 px-2 py-[7px] text-sm text-foreground focus:border-blue-500 focus:outline-none" />
+          </div>
+        </div>
         <div>
           <label className="text-xs text-muted">Reports to</label>
           <Select value={managerId} onChange={setManagerId} options={managerOptions} placeholder="— No manager —" />
@@ -154,10 +181,16 @@ function StakeholderRow({ stakeholder, all, onUpdated, onDeleted }: {
     <div className="group flex items-center gap-3 rounded border border-border bg-surface-2/30 px-3 py-2">
       <StakeholderAvatar name={stakeholder.name} email={stakeholder.email} size={28} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground truncate">{stakeholder.name || "Unnamed"}</p>
-        {(stakeholder.role || stakeholder.email) && (
-          <p className="text-xs text-muted truncate">{stakeholder.role}{stakeholder.role && stakeholder.email ? " · " : ""}{stakeholder.email}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm text-foreground truncate">{stakeholder.name || "Unnamed"}</p>
+          <AffiliationBadge value={stakeholder.affiliation} />
+        </div>
+        {(stakeholder.role || stakeholder.organization) && (
+          <p className="text-xs text-muted truncate">
+            {stakeholder.role}{stakeholder.role && stakeholder.organization ? " · " : ""}{stakeholder.organization}
+          </p>
         )}
+        {stakeholder.email && <p className="text-xs text-muted/80 truncate">{stakeholder.email}</p>}
         {manager && <p className="text-xs text-muted/70 truncate">↳ reports to {manager.name}</p>}
       </div>
       <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">

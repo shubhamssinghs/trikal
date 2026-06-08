@@ -187,13 +187,15 @@ model Membership {
 
 model Stakeholder {
   id        String   @id @default(cuid())
-  companyId String?
-  projectId String?
-  managerId String?
-  name      String
-  email     String?
-  role      String?
-  notes     String?
+  companyId    String?
+  projectId    String?
+  managerId    String?
+  name         String
+  email        String?
+  role         String?
+  affiliation  String?  // client | consultant | vendor | partner | internal
+  organization String?  // their employer / firm
+  notes        String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

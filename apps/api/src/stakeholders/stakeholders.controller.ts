@@ -15,12 +15,12 @@ export class StakeholdersController {
   }
 
   @Post()
-  create(@Body() body: { name: string; email?: string; role?: string; notes?: string; managerId?: string | null; projectId?: string; companyId?: string }) {
+  create(@Body() body: { name: string; email?: string; role?: string; notes?: string; affiliation?: string; organization?: string; managerId?: string | null; projectId?: string; companyId?: string }) {
     return this.stakeholdersService.create(body);
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() body: { name?: string; email?: string; role?: string; notes?: string; managerId?: string | null }) {
+  update(@Param("id") id: string, @Body() body: { name?: string; email?: string; role?: string; notes?: string; affiliation?: string; organization?: string; managerId?: string | null }) {
     return this.stakeholdersService.update(id, body);
   }
 

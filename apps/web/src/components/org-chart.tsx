@@ -2,9 +2,11 @@
 
 import { X } from "lucide-react";
 import { StakeholderAvatar } from "./stakeholder-avatar";
+import { AffiliationBadge } from "./affiliation";
 
 export interface OrgStakeholder {
-  id: string; name: string; email?: string; role?: string; managerId?: string | null;
+  id: string; name: string; email?: string; role?: string;
+  affiliation?: string; organization?: string; managerId?: string | null;
 }
 
 type Node = OrgStakeholder & { children: Node[] };
@@ -26,8 +28,15 @@ function NodeCard({ n }: { n: Node }) {
       <div className="orgcard inline-flex items-center gap-2.5 rounded-xl border border-border bg-surface px-3 py-2 shadow-sm">
         <StakeholderAvatar name={n.name} email={n.email} size={34} />
         <div className="text-left">
-          <p className="text-sm font-medium text-foreground whitespace-nowrap">{n.name || "Unnamed"}</p>
-          {n.role && <p className="text-xs text-muted whitespace-nowrap">{n.role}</p>}
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-foreground whitespace-nowrap">{n.name || "Unnamed"}</p>
+            <AffiliationBadge value={n.affiliation} />
+          </div>
+          {(n.role || n.organization) && (
+            <p className="text-xs text-muted whitespace-nowrap">
+              {n.role}{n.role && n.organization ? " · " : ""}{n.organization}
+            </p>
+          )}
         </div>
       </div>
       {n.children.length > 0 && (
