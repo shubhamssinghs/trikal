@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { X, Plus, Minus, Maximize2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { X, Plus, Minus, Maximize2, Maximize, Minimize } from "lucide-react";
 import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { StakeholderAvatar } from "./stakeholder-avatar";
 import { AffiliationBadge } from "./affiliation";
@@ -52,20 +52,26 @@ export function OrgChartModal({ stakeholders, onClose }: { stakeholders: OrgStak
   const roots = buildTree(stakeholders);
   const apiRef = useRef<ReactZoomPanPinchRef | null>(null);
   const treeRef = useRef<HTMLDivElement | null>(null);
+  const [full, setFull] = useState(false);
 
   const fit = () => {
     if (treeRef.current) apiRef.current?.zoomToElement(treeRef.current, undefined, 300);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-[fadeIn_120ms_ease-out]" onClick={onClose}>
-      <div className="w-full max-w-5xl h-[80vh] flex flex-col rounded-xl border border-border bg-surface shadow-2xl animate-[scaleIn_140ms_ease-out] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-[fadeIn_120ms_ease-out] ${full ? "p-0" : "p-4"}`} onClick={onClose}>
+      <div className={`flex flex-col border border-border bg-surface shadow-2xl animate-[scaleIn_140ms_ease-out] overflow-hidden ${full ? "w-screen h-screen rounded-none" : "w-full max-w-5xl h-[80vh] rounded-xl"}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5 shrink-0">
           <div>
             <h3 className="text-sm font-semibold text-foreground">Stakeholder Org Chart</h3>
             <p className="text-xs text-muted">Reporting structure — scroll to zoom, drag to pan</p>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-foreground transition-colors"><X size={16} /></button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setFull((f) => !f); setTimeout(fit, 60); }} title={full ? "Exit full screen" : "Full screen"} className="text-muted hover:text-foreground transition-colors">
+              {full ? <Minimize size={16} /> : <Maximize size={16} />}
+            </button>
+            <button onClick={onClose} className="text-muted hover:text-foreground transition-colors"><X size={16} /></button>
+          </div>
         </div>
 
         <div className="relative flex-1 orgcanvas">
