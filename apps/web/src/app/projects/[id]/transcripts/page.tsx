@@ -1,58 +1,81 @@
-import Link from "next/link";
+import { FileText, CheckCircle2, Clock } from "lucide-react";
 import { TranscriptUpload } from "@/components/transcript-upload";
 import { KnowledgeSearch } from "@/components/knowledge-search";
 import { Shell } from "@/components/shell";
+import { PageHeader, Card, EmptyState } from "@/components/ui";
+import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 const API_BASE = process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 async function getTranscripts(projectId: string) {
-  const res = await fetch(`${API_BASE}/transcripts?projectId=${projectId}`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/transcripts?projectId=${projectId}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
 }
+
+type Transcript = { id: string; title: string; occurredAt: string; processedAt?: string };
 
 export default async function TranscriptsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const transcripts = await getTranscripts(id);
+  const transcripts: Transcript[] = await getTranscripts(id);
+  const analysed = transcripts.filter((t) => t.processedAt).length;
 
   return (
-    <Shell active="/projects" width="lg">
-        <div className="mb-6">
-          <Link href={`/projects/${id}`} className="text-xs text-muted hover:text-foreground">← Project</Link>
-          <h1 className="text-xl font-semibold mt-1">Transcripts & Knowledge Base</h1>
-        </div>
+    <Shell active="/projects" width="xl">
+      <PageHeader
+        title="Knowledge Base"
+        subtitle="Upload meeting transcripts — they're chunked, embedded, and made searchable, then analysed by AI."
+        backHref={`/projects/${id}`}
+        backLabel="Project"
+        meta={
+          <p className="text-xs text-muted">
+            {transcripts.length} transcript{transcripts.length !== 1 ? "s" : ""} · {analysed} analysed
+          </p>
+        }
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Upload */}
-          <TranscriptUpload projectId={id} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <TranscriptUpload projectId={id} />
+        <KnowledgeSearch projectId={id} />
+      </div>
 
-          {/* Search */}
-          <KnowledgeSearch projectId={id} />
-        </div>
-
-        {/* Transcript list */}
-        {transcripts.length > 0 && (
-          <section className="mt-4 rounded-lg border border-border bg-surface p-4">
-            <h2 className="text-sm font-medium text-foreground mb-3">Uploaded Transcripts ({transcripts.length})</h2>
-            <div className="space-y-2">
-              {transcripts.map((t: { id: string; title: string; occurredAt: string; processedAt?: string }) => (
-                <div key={t.id} className="flex items-center justify-between rounded border border-border bg-surface-2/30 px-3 py-2">
-                  <div>
-                    <p className="text-sm text-foreground">{t.title}</p>
-                    <p className="text-xs text-muted">{new Date(t.occurredAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</p>
+      <Card title={`Uploaded Transcripts (${transcripts.length})`}>
+        {transcripts.length === 0 ? (
+          <EmptyState
+            icon={<FileText size={28} />}
+            title="No transcripts yet"
+            description="Upload your first meeting transcript above to start building this project's knowledge base."
+          />
+        ) : (
+          <div className="space-y-2">
+            {transcripts.map((t) => (
+              <div key={t.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-4 py-3 hover:bg-surface-2/70 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="grid place-items-center w-9 h-9 rounded-lg bg-surface-2 text-muted shrink-0">
+                    <FileText size={16} />
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    t.processedAt ? "bg-emerald-900/50 text-emerald-400" : "bg-surface-2 text-muted"
-                  }`}>
-                    {t.processedAt ? "Analysed" : "Pending"}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                    <p className="text-xs text-muted">{formatDate(t.occurredAt)}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </section>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ring-1 ring-inset ${
+                  t.processedAt
+                    ? "bg-emerald-500/15 text-emerald-500 ring-emerald-500/30"
+                    : "bg-surface-2 text-muted ring-border"
+                }`}>
+                  {t.processedAt ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                  {t.processedAt ? "Analysed" : "Pending"}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
-      </Shell>
+      </Card>
+    </Shell>
   );
 }

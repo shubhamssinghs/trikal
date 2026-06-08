@@ -27,7 +27,7 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
   };
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
+    <section className="rounded-xl border border-border bg-surface shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-medium text-foreground">Stakeholders</h2>
         <button onClick={() => setAdding(!adding)} className="text-xs text-blue-400 hover:text-blue-300">+ Add</button>

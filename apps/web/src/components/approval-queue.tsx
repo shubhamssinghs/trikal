@@ -32,7 +32,7 @@ export function ApprovalQueue({ recommendations: initial }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-amber-900/40 bg-surface p-4">
+    <section className="rounded-xl border border-amber-500/30 bg-surface shadow-sm p-4">
       <h2 className="text-sm font-medium text-amber-400 mb-3">
         Approval Queue{" "}
         <span className="text-amber-600">({recs.length})</span>

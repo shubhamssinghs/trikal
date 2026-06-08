@@ -1,13 +1,15 @@
 import Link from "next/link";
+import { Upload, CheckCircle2 } from "lucide-react";
 import { queries } from "@/lib/api/queries";
 import { formatDate } from "@/lib/format";
+import { Shell } from "@/components/shell";
+import { PageHeader, Card, StatusBadge, Button } from "@/components/ui";
 import { ApprovalQueue } from "@/components/approval-queue";
 import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { StakeholdersPanel } from "@/components/stakeholders-panel";
 import { ProjectActions } from "@/components/project-actions";
-import { Shell } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
@@ -34,87 +36,103 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     fetchJson<unknown[]>(`/stakeholders?projectId=${id}`),
   ]);
 
-  if (!project) return <div className="p-6 text-muted">Project not found.</div>;
+  if (!project) {
+    return <Shell active="/projects"><p className="text-sm text-muted">Project not found.</p></Shell>;
+  }
 
   const pending = recommendations.filter((r) => r.status === "PENDING");
   const approved = recommendations.filter((r) => r.status === "APPROVED");
+  const openRisks = (risks as { status: string }[]).filter((r) => r.status === "open").length;
+
+  const stats = [
+    { label: "Knowledge", value: (project as Record<string, { knowledgeItems?: number }>)._count?.knowledgeItems ?? 0 },
+    { label: "Pending", value: pending.length },
+    { label: "Milestones", value: (milestones as unknown[]).length },
+    { label: "Open risks", value: openRisks },
+  ];
 
   return (
     <Shell active="/projects" width="xl">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/projects" className="text-xs text-muted hover:text-foreground">← Projects</Link>
-          <div className="flex items-start justify-between mt-1">
-            <div>
-              <h1 className="text-xl font-semibold">{project.name}</h1>
-              {project.description && <p className="text-sm text-muted mt-0.5">{project.description}</p>}
-              <p className="text-xs text-muted mt-1">{project.company?.name}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs px-2 py-1 rounded ${
-                project.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
-                project.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
-                "bg-surface-2 text-muted"
-              }`}>{project.status}</span>
-              <Link href={`/projects/${id}/transcripts`}
-                className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition-colors">
-                + Upload Transcript
-              </Link>
-              <ProjectActions project={project} />
-            </div>
+      <PageHeader
+        title={project.name}
+        subtitle={project.description}
+        backHref="/projects"
+        backLabel="Projects"
+        meta={
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <StatusBadge status={project.status} />
+            <span>·</span>
+            <span>{project.company?.name}</span>
           </div>
-        </div>
+        }
+        actions={
+          <>
+            <Link href={`/projects/${id}/transcripts`}>
+              <Button variant="primary"><Upload size={14} /> Upload Transcript</Button>
+            </Link>
+            <ProjectActions project={project} />
+          </>
+        }
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Main column */}
-          <div className="lg:col-span-2 space-y-4">
-            <AskProject projectId={id} />
-            <ApprovalQueue projectId={id} recommendations={pending} />
-            <MilestonesPanel projectId={id} milestones={milestones as never} />
-            <RisksPanel projectId={id} risks={risks as never} />
+      {/* Stat strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {stats.map((s) => (
+          <Card key={s.label} className="!p-0">
+            <div className="px-4 py-3">
+              <p className="text-2xl font-semibold text-foreground">{s.value}</p>
+              <p className="text-xs text-muted mt-0.5">{s.label}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
 
-            {approved.length > 0 && (
-              <section className="rounded-lg border border-border bg-surface p-4">
-                <h2 className="text-sm font-medium text-foreground mb-3">Approved Actions ({approved.length})</h2>
-                <div className="space-y-2">
-                  {approved.map((r) => (
-                    <div key={r.id} className="flex items-start gap-3 rounded border border-border bg-surface-2/30 px-3 py-2">
-                      <span className="text-emerald-500 mt-0.5">✓</span>
-                      <div>
-                        <p className="text-sm text-foreground">{r.title}</p>
-                        {r.description && <p className="text-xs text-muted mt-0.5">{r.description}</p>}
-                      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Main column */}
+        <div className="lg:col-span-2 space-y-5">
+          <AskProject projectId={id} />
+          <ApprovalQueue projectId={id} recommendations={pending} />
+          <MilestonesPanel projectId={id} milestones={milestones as never} />
+          <RisksPanel projectId={id} risks={risks as never} />
+
+          {approved.length > 0 && (
+            <Card title={`Approved Actions (${approved.length})`}>
+              <div className="space-y-2">
+                {approved.map((r) => (
+                  <div key={r.id} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2/40 px-3 py-2.5">
+                    <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm text-foreground">{r.title}</p>
+                      {r.description && <p className="text-xs text-muted mt-0.5">{r.description}</p>}
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <aside className="space-y-4">
-            <StakeholdersPanel projectId={id} stakeholders={stakeholders as never} />
-
-            <section className="rounded-lg border border-border bg-surface p-4">
-              <h2 className="text-sm font-medium text-foreground mb-3">Project Info</h2>
-              <dl className="space-y-1.5">
-                {[
-                  { label: "Company", value: project.company?.name ?? "—" },
-                  { label: "Start", value: formatDate(project.startDate) },
-                  { label: "Target", value: formatDate(project.targetEndDate) },
-                  { label: "Milestones", value: String((milestones as unknown[]).length) },
-                  { label: "Open Risks", value: String((risks as {status:string}[]).filter((r) => r.status === "open").length) },
-                  { label: "Recommendations", value: String(recommendations.length) },
-                ].map((s) => (
-                  <div key={s.label} className="flex justify-between">
-                    <dt className="text-xs text-muted">{s.label}</dt>
-                    <dd className="text-xs text-foreground">{s.value}</dd>
                   </div>
                 ))}
-              </dl>
-            </section>
-          </aside>
+              </div>
+            </Card>
+          )}
         </div>
-      </Shell>
+
+        {/* Sidebar */}
+        <aside className="space-y-5">
+          <StakeholdersPanel projectId={id} stakeholders={stakeholders as never} />
+
+          <Card title="Project Info">
+            <dl className="space-y-2.5">
+              {[
+                { label: "Company", value: project.company?.name ?? "—" },
+                { label: "Start", value: formatDate(project.startDate) },
+                { label: "Target end", value: formatDate(project.targetEndDate) },
+                { label: "Recommendations", value: String(recommendations.length) },
+              ].map((s) => (
+                <div key={s.label} className="flex justify-between gap-3">
+                  <dt className="text-xs text-muted">{s.label}</dt>
+                  <dd className="text-xs text-foreground text-right">{s.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        </aside>
+      </div>
+    </Shell>
   );
 }

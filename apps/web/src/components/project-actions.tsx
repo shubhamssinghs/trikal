@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
+import { Modal, Button, Field, inputClass } from "./ui";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
-
 const STATUSES = ["ACTIVE", "AT_RISK", "ON_HOLD", "COMPLETED", "ARCHIVED"];
 
 interface Project {
@@ -13,9 +13,7 @@ interface Project {
   startDate?: string; targetEndDate?: string;
 }
 
-function toDateInput(d?: string) {
-  return d ? new Date(d).toISOString().split("T")[0] : "";
-}
+const toDateInput = (d?: string) => (d ? new Date(d).toISOString().split("T")[0] : "");
 
 export function ProjectActions({ project }: { project: Project }) {
   const router = useRouter();
@@ -66,90 +64,47 @@ export function ProjectActions({ project }: { project: Project }) {
 
   return (
     <>
-      <button onClick={() => setEditing(true)}
-        className="flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs text-muted hover:text-foreground transition-colors">
-        <Pencil size={13} /> Edit
-      </button>
-      <button onClick={() => setConfirming(true)}
-        className="flex items-center gap-1.5 rounded-md border border-red-900/40 bg-red-900/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/20 transition-colors">
-        <Trash2 size={13} /> Delete
-      </button>
+      <Button variant="secondary" onClick={() => setEditing(true)}><Pencil size={14} /> Edit</Button>
+      <Button variant="ghost" onClick={() => setConfirming(true)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+        <Trash2 size={14} /> Delete
+      </Button>
 
       {editing && (
-        <Modal onClose={() => setEditing(false)} title="Edit Project">
-          <form onSubmit={save} className="space-y-3">
-            <Field label="Name">
-              <input value={name} onChange={(e) => setName(e.target.value)} required className="pi" />
-            </Field>
-            <Field label="Description">
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="pi resize-none" />
-            </Field>
+        <Modal title="Edit Project" onClose={() => setEditing(false)}>
+          <form onSubmit={save} className="space-y-4">
+            <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} /></Field>
+            <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={`${inputClass} resize-none`} /></Field>
             <Field label="Status">
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="pi">
-                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
+                {STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
               </select>
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Start Date">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="pi" />
-              </Field>
-              <Field label="Target End">
-                <input type="date" value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} className="pi" />
-              </Field>
+              <Field label="Start date"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} /></Field>
+              <Field label="Target end"><input type="date" value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} className={inputClass} /></Field>
             </div>
             {error && <p className="text-xs text-red-400">{error}</p>}
-            <div className="flex gap-2 justify-end pt-2">
-              <button type="button" onClick={() => setEditing(false)} className="pbs">Cancel</button>
-              <button type="submit" disabled={busy} className="pbp">{busy ? "Saving..." : "Save"}</button>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
             </div>
           </form>
         </Modal>
       )}
 
       {confirming && (
-        <Modal onClose={() => setConfirming(false)} title="Delete Project?">
-          <p className="text-sm text-muted mb-4">
+        <Modal title="Delete project?" onClose={() => setConfirming(false)}>
+          <p className="text-sm text-muted">
             This permanently deletes <span className="text-foreground font-medium">{project.name}</span> and all its
             transcripts, knowledge base, recommendations, milestones, and risks. This cannot be undone.
           </p>
-          {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setConfirming(false)} className="pbs">Cancel</button>
-            <button onClick={remove} disabled={busy}
-              className="rounded bg-red-600 hover:bg-red-500 disabled:opacity-50 px-4 py-2 text-sm font-medium text-white transition-colors">
-              {busy ? "Deleting..." : "Delete"}
-            </button>
+          {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
+          <div className="flex justify-end gap-2 mt-5">
+            <Button variant="secondary" onClick={() => setConfirming(false)}>Cancel</Button>
+            <Button variant="danger" onClick={remove} disabled={busy}>{busy ? "Deleting…" : "Delete"}</Button>
           </div>
         </Modal>
       )}
-
-      <style>{`
-        .pi { width:100%; border-radius:0.375rem; border:1px solid rgb(var(--border)); background:rgb(var(--surface-2)); padding:0.5rem 0.75rem; font-size:0.875rem; color:rgb(var(--foreground)); outline:none; }
-        .pi:focus { border-color:#3b82f6; }
-        .pbs { border-radius:0.375rem; background:rgb(var(--surface-2)); padding:0.5rem 1rem; font-size:0.875rem; color:rgb(var(--muted)); }
-        .pbp { border-radius:0.375rem; background:#2563eb; padding:0.5rem 1rem; font-size:0.875rem; font-weight:500; color:#fff; }
-        .pbp:disabled { opacity:0.5; }
-      `}</style>
     </>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-muted mb-1">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-sm font-semibold text-foreground mb-4">{title}</h3>
-        {children}
-      </div>
-    </div>
   );
 }

@@ -47,7 +47,7 @@ export function AskProject({ projectId }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-blue-900/40 bg-surface p-4">
+    <section className="rounded-xl border border-blue-500/30 bg-surface shadow-sm p-4">
       <h2 className="text-sm font-medium text-blue-400 mb-3">Ask Project</h2>
 
       <form onSubmit={(e) => { e.preventDefault(); ask(question); }} className="flex gap-2 mb-3">

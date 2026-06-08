@@ -28,7 +28,7 @@ export function KnowledgeSearch({ projectId }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
+    <section className="rounded-xl border border-border bg-surface shadow-sm p-4">
       <h2 className="text-sm font-medium text-foreground mb-3">Search Knowledge Base</h2>
       <form onSubmit={search} className="flex gap-2 mb-3">
         <input

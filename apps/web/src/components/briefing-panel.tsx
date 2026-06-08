@@ -40,7 +40,7 @@ export function BriefingPanel() {
 
   if (loading) {
     return (
-      <section className="rounded-lg border border-blue-900/40 bg-surface p-4">
+      <section className="rounded-xl border border-blue-500/30 bg-surface shadow-sm p-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
           <h2 className="text-sm font-medium text-blue-400">AI Briefing</h2>
@@ -56,7 +56,7 @@ export function BriefingPanel() {
   if (failed || !briefing) return null;
 
   return (
-    <section className="rounded-lg border border-blue-900/40 bg-surface p-4">
+    <section className="rounded-xl border border-blue-500/30 bg-surface shadow-sm p-4">
       <h2 className="text-sm font-medium text-blue-400 mb-1">AI Briefing</h2>
       {briefing.greeting && <p className="text-sm text-foreground italic mb-3">{briefing.greeting}</p>}
 
