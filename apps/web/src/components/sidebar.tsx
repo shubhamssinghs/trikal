@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LayoutDashboard, Building2, FolderKanban, Settings } from "lucide-react";
+import { TrikalLogo } from "./trikal-logo";
 
 const LINKS = [
   { href: "/", label: "Today", icon: LayoutDashboard },
@@ -12,7 +13,9 @@ export function Sidebar({ active }: { active?: string }) {
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-surface h-screen">
       {/* Brand */}
       <div className="h-14 flex items-center gap-2.5 px-5 border-b border-border shrink-0">
-        <span className="grid place-items-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold shadow-sm">T</span>
+        <span className="grid place-items-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 shadow-sm">
+          <TrikalLogo className="w-5 text-white" />
+        </span>
         <div className="leading-tight">
           <p className="font-semibold text-foreground text-[15px]">Trikal</p>
           <p className="text-[10px] text-muted -mt-0.5">Command Center</p>
