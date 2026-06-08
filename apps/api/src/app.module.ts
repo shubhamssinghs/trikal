@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { DatabaseModule } from "./database/database.module";
+import { StorageModule } from "./storage/storage.module";
+import { SettingsModule } from "./settings/settings.module";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { CompaniesModule } from "./companies/companies.module";
@@ -16,6 +18,8 @@ import { StakeholdersModule } from "./stakeholders/stakeholders.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    StorageModule,
+    SettingsModule,
     AuthModule,
     HealthModule,
     CompaniesModule,

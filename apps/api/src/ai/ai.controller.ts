@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Patch, Param, Query, Body } from "@nestjs/common";
 import { TranscriptAnalysisService } from "./transcript-analysis.service";
 import { AskProjectService } from "./ask-project.service";
+import { DailyBriefingService } from "./daily-briefing.service";
 
 const DEV_ORG_ID = "org_dev";
 
@@ -9,7 +10,13 @@ export class AiController {
   constructor(
     private readonly transcriptAnalysis: TranscriptAnalysisService,
     private readonly askProject: AskProjectService,
+    private readonly dailyBriefing: DailyBriefingService,
   ) {}
+
+  @Get("briefing")
+  briefing() {
+    return this.dailyBriefing.generateBriefing(DEV_ORG_ID);
+  }
 
   @Post("analyze/transcript/:transcriptId")
   analyze(@Param("transcriptId") transcriptId: string) {

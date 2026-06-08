@@ -43,6 +43,7 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-trikal}:${POSTGRES_PASSWORD}@postgres:5432/trikal
       - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio
     volumes:
       # Hot-reload: NestJS watch picks up changes to src
       - ../../apps/api/src:/app/apps/api/src

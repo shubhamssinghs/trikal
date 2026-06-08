@@ -37,14 +37,23 @@ export class TranscriptAnalysisService {
     if (!transcript) throw new NotFoundException("Transcript not found");
 
     const userPrompt = `Project: ${transcript.project.name}\n\nTranscript:\n${transcript.rawContent}`;
-    const raw = await this.ai.complete(SYSTEM_PROMPT, userPrompt);
+    const raw = await this.ai.complete(SYSTEM_PROMPT, userPrompt, 4096, organizationId);
+    const isRealAi = await this.ai.isConfigured(organizationId);
+    const modelId = await this.ai.currentModel(organizationId);
 
     let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(raw);
+      // Strip markdown code fences if the model wrapped the JSON
+      const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      parsed = JSON.parse(cleaned);
     } catch {
-      this.logger.error("Failed to parse AI response", raw);
-      throw new Error("AI returned invalid JSON");
+      // AI returned plain text (e.g. a billing/error notice) — surface it without crashing
+      this.logger.warn(`AI response was not JSON: ${raw.substring(0, 120)}`);
+      parsed = {
+        summary: raw,
+        decisions: [], actionItems: [], openQuestions: [],
+        risks: [], scopeChanges: [], suggestedTickets: [],
+      };
     }
 
     // Store AI run
@@ -56,7 +65,7 @@ export class TranscriptAnalysisService {
         promptVersion: "1.0.0",
         inputSummary: `Transcript: ${transcript.title}`,
         outputJson: parsed as Prisma.InputJsonValue,
-        modelId: this.ai.isConfigured ? "claude-sonnet-4-6" : "mock",
+        modelId: isRealAi ? modelId : "mock",
       },
     });
 
@@ -97,7 +106,7 @@ export class TranscriptAnalysisService {
       aiRunId: aiRun.id,
       analysis: parsed,
       recommendationsCreated: recommendations.length,
-      isRealAi: this.ai.isConfigured,
+      isRealAi,
     };
   }
 

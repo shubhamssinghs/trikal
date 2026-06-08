@@ -9,12 +9,12 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false, // allow extra fields for multipart FormData
       transform: true,
     })
   );
   app.enableCors({
-    origin: process.env.WEB_URL ?? "http://localhost:3000",
+    origin: process.env.WEB_URL ?? "http://localhost:3100",
     credentials: true,
   });
 

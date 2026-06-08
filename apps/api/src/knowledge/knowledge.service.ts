@@ -37,9 +37,9 @@ export class KnowledgeService {
 
     // 3. Generate embeddings if Voyage AI is configured
     let embeddings: number[][] = [];
-    if (this.embedding.isEnabled) {
+    if (await this.embedding.isEnabled(organizationId)) {
       try {
-        embeddings = await this.embedding.embedTexts(chunks);
+        embeddings = await this.embedding.embedTexts(chunks, organizationId);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         // Log but don't fail ingest — chunks are still stored without embeddings
@@ -88,8 +88,8 @@ export class KnowledgeService {
     if (!project) throw new NotFoundException("Project not found");
 
     // Try vector search first
-    if (this.embedding.isEnabled) {
-      const queryVec = await this.embedding.embedQuery(query);
+    if (await this.embedding.isEnabled(organizationId)) {
+      const queryVec = await this.embedding.embedQuery(query, organizationId);
       if (queryVec) {
         const vecLiteral = `[${queryVec.join(",")}]`;
         const results = await this.prisma.$queryRaw<
@@ -150,10 +150,43 @@ export class KnowledgeService {
     });
   }
 
-  async getRelevantChunks(projectId: string, query: string, limit = 5): Promise<string[]> {
+  async reingestTranscript(transcriptId: string, organizationId: string) {
+    const transcript = await this.prisma.meetingTranscript.findFirst({
+      where: { id: transcriptId, project: { organizationId } },
+    });
+    if (!transcript) throw new NotFoundException("Transcript not found");
+
+    // Remove existing knowledge items + chunks for this transcript
+    const items = await this.prisma.knowledgeItem.findMany({ where: { transcriptId } });
+    for (const item of items) {
+      await this.prisma.knowledgeChunk.deleteMany({ where: { knowledgeItemId: item.id } });
+    }
+    await this.prisma.knowledgeItem.deleteMany({ where: { transcriptId } });
+    await this.prisma.meetingTranscript.update({
+      where: { id: transcriptId },
+      data: { processedAt: null },
+    });
+
+    return this.ingestTranscript(transcriptId, organizationId);
+  }
+
+  async deleteItem(id: string, organizationId: string) {
+    const item = await this.prisma.knowledgeItem.findFirst({
+      where: { id, project: { organizationId } },
+    });
+    if (!item) throw new NotFoundException("Knowledge item not found");
+    await this.prisma.knowledgeChunk.deleteMany({ where: { knowledgeItemId: id } });
+    return this.prisma.knowledgeItem.delete({ where: { id } });
+  }
+
+  isVectorSearchEnabled(organizationId: string): Promise<boolean> {
+    return this.embedding.isEnabled(organizationId);
+  }
+
+  async getRelevantChunks(projectId: string, query: string, limit = 5, organizationId = "org_dev"): Promise<string[]> {
     // With vector search: semantic similarity
-    if (this.embedding.isEnabled) {
-      const results = await this.searchProject(projectId, query, "org_dev");
+    if (await this.embedding.isEnabled(organizationId)) {
+      const results = await this.searchProject(projectId, query, organizationId);
       return results.slice(0, limit).map((r) => r.content);
     }
 

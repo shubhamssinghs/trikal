@@ -40,8 +40,27 @@ model Organization {
 
   users     User[]
   companies Company[]
+  settings  AppSettings?
 
   @@map("organizations")
+}
+
+// ─── Settings ──────────────────────────────────────────────────────────────────
+
+model AppSettings {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  llmProvider     String   @default("anthropic") // "anthropic" | "openai"
+  llmModel        String   @default("claude-sonnet-4-6")
+  anthropicApiKey String?
+  openaiApiKey    String?
+  voyageApiKey    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("app_settings")
 }
 
 // ─── Hierarchy ────────────────────────────────────────────────────────────────

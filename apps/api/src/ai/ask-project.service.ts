@@ -24,7 +24,7 @@ export class AskProjectService {
     if (!project) throw new NotFoundException("Project not found");
 
     // Retrieve relevant chunks via vector search (or text fallback)
-    const chunks = await this.knowledge.getRelevantChunks(projectId, question, 5);
+    const chunks = await this.knowledge.getRelevantChunks(projectId, question, 5, organizationId);
 
     if (chunks.length === 0) {
       return {
@@ -40,12 +40,12 @@ export class AskProjectService {
 
     const userPrompt = `Project: ${project.name}\n\nContext from project knowledge base:\n${context}\n\nQuestion: ${question}`;
 
-    const answer = await this.ai.complete(SYSTEM_PROMPT, userPrompt, 1024);
+    const answer = await this.ai.complete(SYSTEM_PROMPT, userPrompt, 1024, organizationId);
 
     return {
       answer,
       sources: chunks.length,
-      usedVectorSearch: this.knowledge["embedding"]?.isEnabled ?? false,
+      usedVectorSearch: await this.knowledge.isVectorSearchEnabled(organizationId),
     };
   }
 }

@@ -40,7 +40,22 @@ async function main() {
     },
   });
 
-  console.log("Seeded:", { org: org.name, profiles: [standardProfile.name, hipaaProfile.name] });
+  // Settings — seed keys from env on first run (so existing .env keys migrate into DB)
+  await prisma.appSettings.upsert({
+    where: { organizationId: "org_dev" },
+    update: {},
+    create: {
+      organizationId: "org_dev",
+      llmProvider: "anthropic",
+      llmModel: "claude-sonnet-4-6",
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== "sk-ant-change-me"
+        ? process.env.ANTHROPIC_API_KEY : null,
+      openaiApiKey: process.env.OPENAI_API_KEY ?? null,
+      voyageApiKey: process.env.VOYAGE_API_KEY || null,
+    },
+  });
+
+  console.log("Seeded:", { org: org.name, profiles: [standardProfile.name, hipaaProfile.name], settings: "app_settings" });
 }
 
 main()
