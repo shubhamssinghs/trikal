@@ -65,6 +65,8 @@ function toFlow(data: DiagramData): { nodes: Node<NodeData>[]; edges: Edge[] } {
     };
     if (typeof n.width === "number") node.width = n.width;
     if (typeof n.height === "number") node.height = n.height;
+    // Icon/service nodes need an explicit size so they're resizable (fill their box).
+    if (rfType === "service") { node.width = n.width ?? 168; node.height = n.height ?? 56; }
     if (rfType === "container") node.zIndex = -1;
     return node;
   });
@@ -199,6 +201,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
     else if (isNote(type)) { n.width = 190; n.height = 96; }
     else if (type === "shape.circle") { n.width = 96; n.height = 96; }
     else if (isShape(type)) { n.width = 130; n.height = 64; }
+    else if (isIconNode(type)) { n.width = 168; n.height = 56; }
     record();
     setNodes((nds) => [...nds, n]);
     setSelEdge(null); setSelNode(id);

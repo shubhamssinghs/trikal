@@ -52,32 +52,35 @@ function Handles({ color }: { color: string }) {
   );
 }
 
-/** Service / brand icon node. */
+/** Service / brand icon node — resizable, fills its box. */
 export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const { icon: Icon, color, svg } = iconFor(data.ntype);
   const accent = data.color || color;
   return (
-    <div
-      className="rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 min-w-[120px] max-w-[260px]"
-      style={{ borderColor: selected ? accent : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${accent}` : undefined }}
-    >
+    <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 40 }}>
+      <NodeResizer color={accent} isVisible={selected} minWidth={90} minHeight={40} />
       <LinkBadge link={data.link} />
       <Handles color={accent} />
-      {svg ? (
-        // White chip keeps dark-glyph logos (Next.js, Vercel, Kafka…) visible on any theme.
-        <span className="grid place-items-center rounded-md shrink-0 bg-white border border-black/5" style={{ width: 28, height: 28 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={svg} alt="" width={20} height={20} className="object-contain" draggable={false} />
+      <div
+        className="w-full h-full rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 overflow-hidden"
+        style={{ borderColor: selected ? accent : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${accent}` : undefined }}
+      >
+        {svg ? (
+          // White chip keeps dark-glyph logos (Next.js, Vercel, Kafka…) visible on any theme.
+          <span className="grid place-items-center rounded-md shrink-0 bg-white border border-black/5" style={{ width: 28, height: 28 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={svg} alt="" width={20} height={20} className="object-contain" draggable={false} />
+          </span>
+        ) : (
+          <span className="grid place-items-center rounded-md shrink-0" style={{ width: 26, height: 26, backgroundColor: `${accent}1f`, color: accent }}>
+            <Icon size={15} />
+          </span>
+        )}
+        <span className="min-w-0">
+          <span className="block font-medium truncate" style={{ fontSize: data.fontSize ?? 12, color: data.textColor || "rgb(var(--foreground))" }}>{data.label}</span>
+          {data.body && <span className="block text-[10px] text-muted leading-tight line-clamp-2">{data.body}</span>}
         </span>
-      ) : (
-        <span className="grid place-items-center rounded-md shrink-0" style={{ width: 26, height: 26, backgroundColor: `${accent}1f`, color: accent }}>
-          <Icon size={15} />
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className="block font-medium truncate" style={{ fontSize: data.fontSize ?? 12, color: data.textColor || "rgb(var(--foreground))" }}>{data.label}</span>
-        {data.body && <span className="block text-[10px] text-muted leading-tight line-clamp-2">{data.body}</span>}
-      </span>
+      </div>
     </div>
   );
 }
@@ -107,8 +110,8 @@ export function ShapeNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const clip = SHAPE_CLIP[kind];
 
   return (
-    <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 56 }}>
-      <NodeResizer color={border} isVisible={selected} minWidth={90} minHeight={56} keepAspectRatio={kind === "circle"} />
+    <div className="relative w-full h-full" style={{ minWidth: 36, minHeight: 28 }}>
+      <NodeResizer color={border} isVisible={selected} minWidth={36} minHeight={28} keepAspectRatio={kind === "circle"} />
       <LinkBadge link={data.link} />
       <Handles color={border} />
       <div
@@ -172,8 +175,8 @@ export function NoteNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const color = data.color || "#f59e0b";
   const size = data.fontSize ?? 12;
   return (
-    <div className="relative w-full h-full" style={{ minWidth: 150, minHeight: 70 }}>
-      <NodeResizer color={color} isVisible={selected} minWidth={150} minHeight={70} />
+    <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 48 }}>
+      <NodeResizer color={color} isVisible={selected} minWidth={90} minHeight={48} />
       <div
         className="w-full h-full rounded-md shadow-sm p-2.5 text-left overflow-hidden"
         style={{ backgroundColor: data.fillColor || `${color}1f`, borderLeft: `3px solid ${color}`, outline: selected ? `1px solid ${color}` : undefined }}
