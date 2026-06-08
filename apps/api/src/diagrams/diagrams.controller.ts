@@ -6,6 +6,7 @@ const DEV_ORG_ID = "org_dev";
 type SchemaBody = {
   title?: string;
   description?: string;
+  kind?: string;
   schemaJson?: Parameters<DiagramsService["create"]>[2]["schemaJson"];
 };
 
@@ -29,8 +30,8 @@ export class DiagramsController {
   }
 
   @Post("generate")
-  generate(@Body("projectId") projectId: string, @Body("prompt") prompt?: string) {
-    return this.diagrams.generate(projectId, DEV_ORG_ID, prompt);
+  generate(@Body("projectId") projectId: string, @Body("prompt") prompt?: string, @Body("kind") kind?: string) {
+    return this.diagrams.generate(projectId, DEV_ORG_ID, prompt, kind);
   }
 
   @Patch(":id")

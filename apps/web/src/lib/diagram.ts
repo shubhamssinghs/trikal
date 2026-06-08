@@ -1,7 +1,7 @@
 import {
   User, Smartphone, Server, Database, ListOrdered, Lock, Cloud, ShieldAlert,
   Boxes, HardDrive, KeyRound, Network, AppWindow, GitBranch, MessageSquare,
-  Ticket, Users, Video, Mail, Box, type LucideIcon,
+  Ticket, Users, Video, Mail, Box, Workflow, Share2, type LucideIcon,
 } from "lucide-react";
 
 export type DNode = {
@@ -27,6 +27,7 @@ export type DiagramData = {
 
 export type DiagramSummary = {
   id: string; title: string; description?: string | null;
+  kind?: string;
   createdAt: string; updatedAt: string;
 };
 
@@ -192,4 +193,73 @@ export function defaultLabelFor(type: string): string {
 
 export function emptyDiagram(title = "Untitled diagram"): DiagramData {
   return { title, description: "", style: "default", layers: [], nodes: [], edges: [] };
+}
+
+/* ── Diagram kinds (type picker, badges, templates) ─────────────────────── */
+
+export type DiagramKind = "architecture" | "flowchart" | "dfd" | "erd" | "mindmap";
+
+export const DIAGRAM_KINDS: { value: DiagramKind; label: string; description: string; color: string; icon: LucideIcon }[] = [
+  { value: "architecture", label: "Architecture", description: "Cloud / system components & connections", color: "#2563eb", icon: Network },
+  { value: "flowchart", label: "Flowchart", description: "Process steps, decisions & branches", color: "#16a34a", icon: Workflow },
+  { value: "dfd", label: "Data Flow", description: "Processes, data stores & flows", color: "#d97706", icon: Share2 },
+  { value: "erd", label: "ER Diagram", description: "Entities, fields & relationships", color: "#7c3aed", icon: Database },
+  { value: "mindmap", label: "Mind Map", description: "Central topic & branches", color: "#db2777", icon: GitBranch },
+];
+
+export function kindMeta(kind?: string) {
+  return DIAGRAM_KINDS.find((k) => k.value === kind) ?? DIAGRAM_KINDS[0];
+}
+
+/** Starter content for a blank diagram of a given kind. */
+export function templateFor(kind: string, title: string): DiagramData {
+  const d = emptyDiagram(title);
+  switch (kind) {
+    case "flowchart":
+      d.nodes = [
+        { id: "s", type: "shape.rounded", label: "Start", x: 220, y: 40, width: 120, height: 54, color: "#16a34a" },
+        { id: "p", type: "shape.rectangle", label: "Process step", x: 215, y: 150, width: 130, height: 60 },
+        { id: "dec", type: "shape.diamond", label: "Decision?", x: 210, y: 290, width: 140, height: 92, color: "#d97706" },
+        { id: "e", type: "shape.rounded", label: "End", x: 220, y: 450, width: 120, height: 54, color: "#dc2626" },
+      ];
+      d.edges = [
+        { id: "e1", from: "s", to: "p", style: "solid", shape: "smooth" },
+        { id: "e2", from: "p", to: "dec", style: "solid", shape: "smooth" },
+        { id: "e3", from: "dec", to: "e", label: "Yes", style: "solid", shape: "smooth" },
+      ];
+      break;
+    case "dfd":
+      d.nodes = [
+        { id: "ext", type: "shape.rectangle", label: "External Entity", x: 60, y: 120, width: 140, height: 60 },
+        { id: "proc", type: "shape.circle", label: "Process", x: 320, y: 110, width: 110, height: 110, color: "#d97706" },
+        { id: "store", type: "shape.cylinder", label: "Data Store", x: 320, y: 300, width: 140, height: 70, color: "#16a34a" },
+      ];
+      d.edges = [
+        { id: "e1", from: "ext", to: "proc", label: "request", style: "solid", shape: "smooth" },
+        { id: "e2", from: "proc", to: "store", label: "record", style: "solid", shape: "smooth" },
+      ];
+      break;
+    case "erd":
+      d.nodes = [
+        { id: "a", type: "shape.rectangle", label: "Customer\n- id (PK)\n- name\n- email", x: 80, y: 80, width: 180, height: 110, color: "#7c3aed" },
+        { id: "b", type: "shape.rectangle", label: "Order\n- id (PK)\n- total\n- customerId (FK)", x: 360, y: 80, width: 190, height: 120, color: "#7c3aed" },
+      ];
+      d.edges = [{ id: "e1", from: "a", to: "b", label: "1:N", style: "solid", shape: "smooth" }];
+      break;
+    case "mindmap":
+      d.nodes = [
+        { id: "c", type: "shape.rounded", label: "Central Topic", x: 280, y: 200, width: 150, height: 60, color: "#db2777" },
+        { id: "b1", type: "shape.rounded", label: "Branch 1", x: 60, y: 80, width: 120, height: 50, color: "#2563eb" },
+        { id: "b2", type: "shape.rounded", label: "Branch 2", x: 60, y: 320, width: 120, height: 50, color: "#16a34a" },
+        { id: "b3", type: "shape.rounded", label: "Branch 3", x: 540, y: 200, width: 120, height: 50, color: "#d97706" },
+      ];
+      d.edges = [
+        { id: "e1", from: "c", to: "b1", style: "solid", shape: "bezier" },
+        { id: "e2", from: "c", to: "b2", style: "solid", shape: "bezier" },
+        { id: "e3", from: "c", to: "b3", style: "solid", shape: "bezier" },
+      ];
+      break;
+    // architecture starts empty — users generate or build from the palette.
+  }
+  return d;
 }

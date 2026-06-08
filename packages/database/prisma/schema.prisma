@@ -447,6 +447,7 @@ model Diagram {
   projectId   String
   title       String
   description String?
+  kind        String   @default("architecture")
   schemaJson  Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

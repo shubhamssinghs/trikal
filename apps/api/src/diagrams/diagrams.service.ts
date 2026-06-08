@@ -22,8 +22,11 @@ type DEdge = {
 type DLayer = { id: string; label: string; order?: number };
 type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[] };
 
-// Node types the generator may use (keys from the shared icon registry).
-const NODE_TYPES = [
+export const DIAGRAM_KINDS = ["architecture", "flowchart", "dfd", "erd", "mindmap"] as const;
+export type DiagramKind = (typeof DIAGRAM_KINDS)[number];
+
+// Node types the architecture generator may use (keys from the shared icon registry).
+const ARCH_TYPES = [
   "generic.user", "generic.mobile", "generic.api", "generic.database",
   "generic.queue", "generic.lock",
   "aws.cloudfront", "aws.waf", "aws.ecs", "aws.rds", "aws.s3", "aws.kms", "aws.elasticache", "aws.alb",
@@ -31,24 +34,52 @@ const NODE_TYPES = [
   "tools.slack", "tools.jira", "tools.teams", "tools.zoom", "tools.outlook",
 ];
 
-const SYSTEM_PROMPT = `You are a solutions architect. From the project context, produce a clear architecture/system diagram as JSON.
-
-Output ONLY valid JSON with this exact structure:
+const BASE_JSON = `Output ONLY valid JSON:
 {
-  "title": "short diagram title",
-  "description": "one sentence describing the diagram",
+  "title": "short title",
+  "description": "one sentence",
   "style": "default",
-  "layers": [{"id": "client", "label": "Client", "order": 0}],
-  "nodes": [{"id": "n1", "type": "generic.user", "label": "End User", "layer": "client"}],
-  "edges": [{"id": "e1", "from": "n1", "to": "n2", "label": "HTTPS", "style": "solid"}]
+  "layers": [],
+  "nodes": [{"id": "n1", "type": "<type>", "label": "...", "color": "#hex (optional)"}],
+  "edges": [{"id": "e1", "from": "n1", "to": "n2", "label": "...", "style": "solid|dashed|dotted"}]
 }
+Node ids unique; edges reference node ids. Base everything on the provided context; never invent unrelated systems.`;
 
-Rules:
-- "type" MUST be one of: ${NODE_TYPES.join(", ")}.
-- Use 5-12 nodes. Group related nodes with layers (e.g. client, edge, application, data, external).
-- Node ids must be unique short strings; edges reference node ids in "from"/"to".
-- edge "style" is one of solid|dashed|dotted. Use dashed for async/eventing.
-- Base everything on the provided context. Never invent unrelated systems.`;
+// Per-kind system prompts. All emit the same DiagramData JSON; only the node
+// vocabulary and intent differ.
+const KIND_PROMPTS: Record<DiagramKind, string> = {
+  architecture: `You are a solutions architect. Produce a clear cloud/system architecture diagram.
+${BASE_JSON}
+- "type" MUST be one of: ${ARCH_TYPES.join(", ")}.
+- 5-12 nodes. Use dashed edges for async/eventing.`,
+
+  flowchart: `You are a process analyst. Produce a flowchart of the process described.
+${BASE_JSON}
+- "type" MUST be one of: shape.rounded (start/end), shape.rectangle (process step), shape.diamond (decision).
+- From each decision (diamond), label the outgoing edges "Yes"/"No" (or the conditions).
+- 6-14 nodes, a single clear top-to-bottom flow.`,
+
+  dfd: `You are a systems analyst. Produce a Data Flow Diagram (DFD).
+${BASE_JSON}
+- "type" MUST be one of: shape.circle (process), shape.cylinder (data store), shape.rectangle (external entity).
+- Edge labels name the data that flows (e.g. "order details").
+- 5-12 nodes.`,
+
+  erd: `You are a data modeler. Produce an Entity-Relationship Diagram.
+${BASE_JSON}
+- Each entity is "type": "shape.rectangle". The "label" is the entity name followed by key fields, e.g. "Order\\n- id (PK)\\n- total\\n- customerId (FK)".
+- Edge labels show cardinality: "1:N", "N:M", "1:1".
+- 4-10 entities.`,
+
+  mindmap: `You are a facilitator. Produce a mind map of the topic.
+${BASE_JSON}
+- One central node "type": "shape.rounded" with the main topic; first-level branches are "shape.rounded"; give branches distinct "color" hex values.
+- Edges connect from the centre outward (no labels needed). 8-16 nodes.`,
+};
+
+function normalizeKind(k?: string): DiagramKind {
+  return (DIAGRAM_KINDS as readonly string[]).includes(String(k)) ? (k as DiagramKind) : "architecture";
+}
 
 @Injectable()
 export class DiagramsService {
@@ -69,7 +100,7 @@ export class DiagramsService {
   listByProject(projectId: string, organizationId: string) {
     return this.prisma.diagram.findMany({
       where: { projectId, project: { organizationId } },
-      select: { id: true, title: true, description: true, createdAt: true, updatedAt: true },
+      select: { id: true, title: true, description: true, kind: true, createdAt: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
     });
   }
@@ -83,7 +114,7 @@ export class DiagramsService {
     return diagram;
   }
 
-  async create(projectId: string, organizationId: string, data: { title?: string; description?: string; schemaJson?: DiagramData }) {
+  async create(projectId: string, organizationId: string, data: { title?: string; description?: string; kind?: string; schemaJson?: DiagramData }) {
     await this.assertProject(projectId, organizationId);
     const schema = this.normalize(data.schemaJson, data.title || "Untitled diagram", data.description);
     return this.prisma.diagram.create({
@@ -91,6 +122,7 @@ export class DiagramsService {
         projectId,
         title: schema.title,
         description: schema.description,
+        kind: normalizeKind(data.kind),
         schemaJson: schema as unknown as Prisma.InputJsonValue,
       },
     });
@@ -129,11 +161,12 @@ export class DiagramsService {
     return this.prisma.diagram.delete({ where: { id } });
   }
 
-  /** Generate a diagram from project knowledge + an optional focus prompt. */
-  async generate(projectId: string, organizationId: string, prompt?: string) {
+  /** Generate a diagram of a given kind from project knowledge + an optional focus prompt. */
+  async generate(projectId: string, organizationId: string, prompt?: string, kindInput?: string) {
     const project = await this.assertProject(projectId, organizationId);
+    const kind = normalizeKind(kindInput);
 
-    const query = prompt?.trim() || "system architecture, components, infrastructure, integrations, data flow";
+    const query = prompt?.trim() || `${kind} diagram: components, steps, data, relationships, integrations`;
     let context = "";
     try {
       const hits = await this.knowledge.searchProject(projectId, query, organizationId);
@@ -146,10 +179,10 @@ export class DiagramsService {
       `Project: ${project.name}`,
       project.description ? `Description: ${project.description}` : "",
       prompt ? `Focus: ${prompt}` : "",
-      context ? `\nProject knowledge:\n${context}` : "\n(No knowledge base content yet — produce a sensible default architecture for this kind of project.)",
+      context ? `\nProject knowledge:\n${context}` : "\n(No knowledge base content yet — produce a sensible default for this kind of project.)",
     ].filter(Boolean).join("\n");
 
-    const raw = await this.ai.complete(SYSTEM_PROMPT, userPrompt, 4096, organizationId);
+    const raw = await this.ai.complete(KIND_PROMPTS[kind], userPrompt, 4096, organizationId);
     const isRealAi = await this.ai.isConfigured(organizationId);
 
     let parsed: Partial<DiagramData> | null = null;
@@ -160,13 +193,14 @@ export class DiagramsService {
       this.logger.warn(`Diagram AI response was not JSON: ${raw.substring(0, 120)}`);
     }
 
-    const schema = this.normalize(parsed ?? undefined, parsed?.title || `${project.name} architecture`, parsed?.description);
+    const schema = this.normalize(parsed ?? undefined, parsed?.title || `${project.name} ${kind}`, parsed?.description);
 
     const diagram = await this.prisma.diagram.create({
       data: {
         projectId,
         title: schema.title,
         description: schema.description,
+        kind,
         schemaJson: schema as unknown as Prisma.InputJsonValue,
       },
     });
