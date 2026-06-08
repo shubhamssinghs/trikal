@@ -55,10 +55,10 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
           {stakeholders.map((s) => (
             <div key={s.id} className="flex items-center gap-3 rounded border border-border bg-surface-2/30 px-3 py-2">
               <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-xs text-foreground flex-shrink-0 font-medium">
-                {s.name[0].toUpperCase()}
+                {(s.name?.trim()?.[0] ?? "?").toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-foreground truncate">{s.name}</p>
+                <p className="text-sm text-foreground truncate">{s.name || "Unnamed"}</p>
                 {(s.role || s.email) && (
                   <p className="text-xs text-muted truncate">{s.role}{s.role && s.email ? " · " : ""}{s.email}</p>
                 )}
