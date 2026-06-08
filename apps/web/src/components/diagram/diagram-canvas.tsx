@@ -9,14 +9,15 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
-import { Trash2, Save, Download, Check, Wand2, ExternalLink, X } from "lucide-react";
+import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type DiagramData, type DNode, type DEdge, type DLink,
   ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS,
-  PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, defaultLabelFor,
+  PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, defaultLabelFor, iconFor,
   LINK_TYPES, linkTypeMeta, linkHref,
 } from "@/lib/diagram";
+import type { LayoutDir } from "./layout";
 import { nodeTypes, type NodeData } from "./nodes";
 import { autoLayout } from "./layout";
 import { Button, inputClass } from "../ui";
@@ -120,6 +121,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [linkType, setLinkType] = useState("knowledge");
+  const [layoutDir, setLayoutDir] = useState<LayoutDir>("LR");
   const [targets, setTargets] = useState<LinkTargets>({});
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const idRef = useRef(initial.nodes.length + initial.edges.length + 1);
@@ -208,8 +210,9 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
     setSelEdge(null);
   };
 
-  const tidy = () => {
-    setNodes((nds) => autoLayout(nds, edges));
+  const tidy = (dir: LayoutDir = layoutDir) => {
+    setLayoutDir(dir);
+    setNodes((nds) => autoLayout(nds, edges, dir));
     setTimeout(() => fitView({ duration: 300 }), 60);
   };
 
@@ -241,13 +244,15 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] min-h-[560px] rounded-xl border border-border bg-surface overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-5.5rem)] min-h-[460px] rounded-xl border border-border bg-surface overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} max-w-xs`} placeholder="Diagram title" />
-        <button onClick={tidy} title="Auto-layout" className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-foreground hover:bg-surface-2">
+        <PalettePopover onAdd={addNode} />
+        <button onClick={() => tidy()} title="Auto-layout" className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-foreground hover:bg-surface-2">
           <Wand2 size={13} /> Tidy
         </button>
+        <DirControl value={layoutDir} onChange={(d) => tidy(d)} />
         <div className="flex-1" />
         <button onClick={exportJson} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-muted hover:text-foreground hover:bg-surface-2">
           <Download size={13} /> JSON
@@ -261,26 +266,6 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
       </div>
 
       <div className="relative flex-1 flex min-h-0">
-        {/* Palette */}
-        <div className="w-44 shrink-0 border-r border-border bg-surface overflow-y-auto p-2">
-          {PALETTE.map((cat) => (
-            <div key={cat.category} className="mb-3">
-              <p className="px-1 mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">{cat.category}</p>
-              <div className="space-y-0.5">
-                {cat.items.map((it) => (
-                  <button
-                    key={it.type}
-                    onClick={() => addNode(it.type)}
-                    className="w-full text-left text-xs text-foreground rounded-md px-2 py-1.5 hover:bg-surface-2 transition-colors"
-                  >
-                    {it.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Canvas */}
         <div ref={wrapRef} className="flex-1 min-w-0">
           <ReactFlow
@@ -419,6 +404,99 @@ function ColorRow({ value, onChange }: { value: string; onChange: (c: string) =>
       ) : (
         <span className="text-[11px] text-muted">Default</span>
       )}
+    </div>
+  );
+}
+
+/* ── Palette popover (searchable logo grid) ─────────────────────────────── */
+
+function PaletteTile({ type, label, onClick }: { type: string; label: string; onClick: () => void }) {
+  const { icon: Icon, color, svg } = iconFor(type);
+  return (
+    <button onClick={onClick} title={label} className="flex flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-surface-2 transition-colors">
+      <span className="grid place-items-center w-9 h-9 rounded-md bg-white border border-black/5 shrink-0">
+        {svg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={svg} alt="" width={20} height={20} className="object-contain" draggable={false} />
+        ) : (
+          <Icon size={17} style={{ color }} />
+        )}
+      </span>
+      <span className="w-full text-[10px] leading-tight text-center text-foreground truncate">{label}</span>
+    </button>
+  );
+}
+
+function PalettePopover({ onAdd }: { onAdd: (type: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as HTMLElement | null)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  const ql = q.trim().toLowerCase();
+  const cats = PALETTE
+    .map((c) => ({ category: c.category, items: c.items.filter((it) => !ql || it.label.toLowerCase().includes(ql) || it.type.toLowerCase().includes(ql)) }))
+    .filter((c) => c.items.length);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-2 text-xs font-medium text-white hover:bg-blue-500">
+        <Plus size={13} /> Add node
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 left-0 w-[330px] max-h-[440px] flex flex-col rounded-xl border border-border bg-surface shadow-2xl">
+          <div className="p-2 border-b border-border">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search React, RDS, Postgres…" className={`${inputClass} pl-8`} />
+            </div>
+          </div>
+          <div className="overflow-y-auto p-2">
+            {cats.map((cat) => (
+              <div key={cat.category} className="mb-2">
+                <p className="px-1 mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">{cat.category}</p>
+                <div className="grid grid-cols-4 gap-0.5">
+                  {cat.items.map((it) => (
+                    <PaletteTile key={it.type} type={it.type} label={it.label} onClick={() => { onAdd(it.type); setOpen(false); }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {cats.length === 0 && <p className="text-xs text-muted px-1 py-6 text-center">No matches.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const DIRS: { value: LayoutDir; label: string }[] = [
+  { value: "LR", label: "→" },
+  { value: "RL", label: "←" },
+  { value: "TB", label: "↓" },
+  { value: "BT", label: "↑" },
+];
+
+function DirControl({ value, onChange }: { value: LayoutDir; onChange: (d: LayoutDir) => void }) {
+  return (
+    <div className="inline-flex items-center rounded-lg border border-border overflow-hidden" title="Layout direction">
+      {DIRS.map((d) => (
+        <button
+          key={d.value}
+          onClick={() => onChange(d.value)}
+          className={`px-2 py-1.5 text-xs leading-none transition-colors ${value === d.value ? "bg-blue-600/10 text-blue-500 font-semibold" : "text-muted hover:text-foreground hover:bg-surface-2"}`}
+        >
+          {d.label}
+        </button>
+      ))}
     </div>
   );
 }

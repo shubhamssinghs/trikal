@@ -46,7 +46,70 @@ export type DiagramSummary = {
  */
 type IconDef = { icon: LucideIcon; color: string; svg?: string };
 
+/**
+ * Tech-stack icons (frontend / backend / database / devops). `file` is the
+ * bundled SVG under /public/icons/tech and the suffix of the node type
+ * (`tech.<file>`). `cat` groups them in the palette.
+ */
+type TechCat = "Frontend" | "Backend" | "Database" | "DevOps";
+const TECH: { file: string; label: string; color: string; cat: TechCat }[] = [
+  // Frontend
+  { file: "react", label: "React", color: "#61dafb", cat: "Frontend" },
+  { file: "nextjs", label: "Next.js", color: "#000000", cat: "Frontend" },
+  { file: "vue", label: "Vue", color: "#42b883", cat: "Frontend" },
+  { file: "angular", label: "Angular", color: "#dd0031", cat: "Frontend" },
+  { file: "svelte", label: "Svelte", color: "#ff3e00", cat: "Frontend" },
+  { file: "typescript", label: "TypeScript", color: "#3178c6", cat: "Frontend" },
+  { file: "javascript", label: "JavaScript", color: "#f7df1e", cat: "Frontend" },
+  { file: "tailwind", label: "Tailwind", color: "#06b6d4", cat: "Frontend" },
+  { file: "html5", label: "HTML5", color: "#e34f26", cat: "Frontend" },
+  { file: "css3", label: "CSS3", color: "#1572b6", cat: "Frontend" },
+  { file: "redux", label: "Redux", color: "#764abc", cat: "Frontend" },
+  // Backend & languages
+  { file: "nodejs", label: "Node.js", color: "#5fa04e", cat: "Backend" },
+  { file: "express", label: "Express", color: "#000000", cat: "Backend" },
+  { file: "nestjs", label: "NestJS", color: "#e0234e", cat: "Backend" },
+  { file: "python", label: "Python", color: "#3776ab", cat: "Backend" },
+  { file: "django", label: "Django", color: "#092e20", cat: "Backend" },
+  { file: "flask", label: "Flask", color: "#000000", cat: "Backend" },
+  { file: "java", label: "Java", color: "#f89820", cat: "Backend" },
+  { file: "spring", label: "Spring", color: "#6db33f", cat: "Backend" },
+  { file: "go", label: "Go", color: "#00add8", cat: "Backend" },
+  { file: "rails", label: "Rails", color: "#cc0000", cat: "Backend" },
+  { file: "php", label: "PHP", color: "#777bb4", cat: "Backend" },
+  { file: "graphql", label: "GraphQL", color: "#e10098", cat: "Backend" },
+  { file: "dotnet", label: ".NET", color: "#512bd4", cat: "Backend" },
+  // Databases & cache
+  { file: "mongodb", label: "MongoDB", color: "#47a248", cat: "Database" },
+  { file: "postgresql", label: "PostgreSQL", color: "#4169e1", cat: "Database" },
+  { file: "mysql", label: "MySQL", color: "#4479a1", cat: "Database" },
+  { file: "redis", label: "Redis", color: "#dc382d", cat: "Database" },
+  { file: "sqlite", label: "SQLite", color: "#003b57", cat: "Database" },
+  { file: "elasticsearch", label: "Elasticsearch", color: "#005571", cat: "Database" },
+  { file: "firebase", label: "Firebase", color: "#ffca28", cat: "Database" },
+  { file: "supabase", label: "Supabase", color: "#3ecf8e", cat: "Database" },
+  { file: "prisma", label: "Prisma", color: "#2d3748", cat: "Database" },
+  // DevOps & cloud
+  { file: "docker", label: "Docker", color: "#2496ed", cat: "DevOps" },
+  { file: "kubernetes", label: "Kubernetes", color: "#326ce5", cat: "DevOps" },
+  { file: "github-actions", label: "GitHub Actions", color: "#2088ff", cat: "DevOps" },
+  { file: "gitlab", label: "GitLab", color: "#fc6d26", cat: "DevOps" },
+  { file: "terraform", label: "Terraform", color: "#7b42bc", cat: "DevOps" },
+  { file: "nginx", label: "NGINX", color: "#009639", cat: "DevOps" },
+  { file: "vercel", label: "Vercel", color: "#000000", cat: "DevOps" },
+  { file: "netlify", label: "Netlify", color: "#00c7b7", cat: "DevOps" },
+  { file: "cloudflare", label: "Cloudflare", color: "#f38020", cat: "DevOps" },
+  { file: "gcp", label: "Google Cloud", color: "#4285f4", cat: "DevOps" },
+  { file: "kafka", label: "Kafka", color: "#231f20", cat: "DevOps" },
+  { file: "rabbitmq", label: "RabbitMQ", color: "#ff6600", cat: "DevOps" },
+];
+
+const TECH_ICON_MAP: Record<string, IconDef> = Object.fromEntries(
+  TECH.map((t) => [`tech.${t.file}`, { icon: Box, color: t.color, svg: `/icons/tech/${t.file}.svg` }]),
+);
+
 const ICON_MAP: Record<string, IconDef> = {
+  ...TECH_ICON_MAP,
   // Generic concepts — no brand, keep clean lucide glyphs.
   "generic.user": { icon: User, color: "#64748b" },
   "generic.mobile": { icon: Smartphone, color: "#64748b" },
@@ -183,6 +246,10 @@ export const PALETTE: { category: string; items: { type: string; label: string }
       { type: "tools.outlook", label: "Outlook" },
     ],
   },
+  ...(["Frontend", "Backend", "Database", "DevOps"] as const).map((cat) => ({
+    category: cat,
+    items: TECH.filter((t) => t.cat === cat).map((t) => ({ type: `tech.${t.file}`, label: t.label })),
+  })),
 ];
 
 /** Default label when adding a node of a given type from the palette. */

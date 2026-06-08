@@ -51,8 +51,11 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
       <LinkBadge link={data.link} />
       <LR color={accent} />
       {svg ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={svg} alt="" width={26} height={26} className="shrink-0 object-contain" draggable={false} />
+        // White chip keeps dark-glyph logos (Next.js, Vercel, Kafka…) visible on any theme.
+        <span className="grid place-items-center rounded-md shrink-0 bg-white border border-black/5" style={{ width: 28, height: 28 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={svg} alt="" width={20} height={20} className="object-contain" draggable={false} />
+        </span>
       ) : (
         <span className="grid place-items-center rounded-md shrink-0" style={{ width: 26, height: 26, backgroundColor: `${accent}1f`, color: accent }}>
           <Icon size={15} />

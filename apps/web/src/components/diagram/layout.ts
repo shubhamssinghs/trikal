@@ -1,11 +1,13 @@
 import dagre from "@dagrejs/dagre";
 import type { Node, Edge } from "@xyflow/react";
 
+export type LayoutDir = "LR" | "RL" | "TB" | "BT";
+
 /**
- * Tidy a graph left-to-right with dagre. Group and text nodes are left in
- * place (they're containers/annotations, not part of the flow).
+ * Tidy a graph with dagre in any of the four directions. Group and text nodes
+ * are left in place (they're containers/annotations, not part of the flow).
  */
-export function autoLayout<T extends Node>(nodes: T[], edges: Edge[], rankdir: "LR" | "TB" = "LR"): T[] {
+export function autoLayout<T extends Node>(nodes: T[], edges: Edge[], rankdir: LayoutDir = "LR"): T[] {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({ rankdir, nodesep: 60, ranksep: 90, marginx: 40, marginy: 40 });
