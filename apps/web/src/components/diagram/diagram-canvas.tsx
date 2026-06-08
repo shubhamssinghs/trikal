@@ -124,6 +124,17 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
       .catch(() => {});
   }, [projectId]);
 
+  // Freshly AI-generated diagrams ship with raw grid coordinates that overlap
+  // edges/labels — tidy them once on first open so the diagram reads cleanly.
+  const didAutoLayout = useRef(false);
+  useEffect(() => {
+    if (!initial.autoLayout || didAutoLayout.current) return;
+    didAutoLayout.current = true;
+    setNodes((nds) => autoLayout(nds, edges));
+    setTimeout(() => fitView({ duration: 300 }), 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const node = nodes.find((n) => n.id === selNode) ?? null;
   const edge = edges.find((e) => e.id === selEdge) ?? null;
 

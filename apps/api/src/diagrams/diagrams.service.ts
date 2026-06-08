@@ -22,7 +22,7 @@ type DEdge = {
   color?: string; animated?: boolean;
 };
 type DLayer = { id: string; label: string; order?: number };
-type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[]; mermaid?: string };
+type DiagramData = { title: string; description?: string; style: string; layers: DLayer[]; nodes: DNode[]; edges: DEdge[]; mermaid?: string; autoLayout?: boolean };
 
 // React Flow (node/edge) kinds.
 const RF_KINDS = ["architecture", "flowchart", "dfd", "erd", "mindmap"] as const;
@@ -269,6 +269,8 @@ export class DiagramsService {
         this.logger.warn(`Diagram AI response was not JSON: ${raw.substring(0, 120)}`);
       }
       schema = this.normalize(parsed ?? undefined, parsed?.title || `${baseName} ${kind}`, parsed?.description);
+      // Node-graph kinds get raw grid coords from the AI; let the editor tidy them on open.
+      schema.autoLayout = true;
     }
 
     const diagram = await this.prisma.diagram.create({

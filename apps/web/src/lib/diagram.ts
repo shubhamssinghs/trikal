@@ -28,6 +28,8 @@ export type DiagramData = {
   layers: DLayer[]; nodes: DNode[]; edges: DEdge[];
   /** For text-based (Mermaid) diagram kinds: the raw Mermaid source. */
   mermaid?: string;
+  /** Set by AI generation — the editor runs a tidy auto-layout on first open. */
+  autoLayout?: boolean;
 };
 
 export type DiagramSummary = {
