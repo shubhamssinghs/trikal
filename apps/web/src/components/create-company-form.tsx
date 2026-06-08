@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, inputClass } from "./ui";
+import { LogoUpload, uploadLogo } from "./logo-upload";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -13,6 +14,7 @@ export function CreateCompanyForm() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
@@ -43,6 +45,7 @@ export function CreateCompanyForm() {
       });
       if (!res.ok) throw new Error();
       const company = await res.json();
+      if (logoFile) await uploadLogo(company.id, logoFile);
       router.push(`/companies/${company.id}`);
     } catch {
       setSubmitError("Failed to create company. Please try again.");
@@ -55,6 +58,10 @@ export function CreateCompanyForm() {
   return (
     <Card>
       <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label="Logo">
+          <LogoUpload onFileSelected={setLogoFile} />
+        </Field>
+
         <Field label="Company Name *">
           <input
             value={name}

@@ -71,6 +71,7 @@ model Company {
   name               String
   description        String?
   website            String?
+  logoKey            String?
   complianceProfile  ComplianceProfile? @relation(fields: [complianceProfileId], references: [id])
   complianceProfileId String?
   createdAt          DateTime @default(now())

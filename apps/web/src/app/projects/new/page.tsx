@@ -8,8 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function NewProjectPage() {
   const companies = await queries.companies().catch(() => []);
   return (
-    <Shell active="/projects" width="md">
-      <PageHeader title="New Project" subtitle="Create a project under one of your companies." backHref="/projects" backLabel="Projects" />
+    <Shell active="/projects" width="xl">
+      <PageHeader
+        title="New Project"
+        subtitle="Create a project under one of your companies."
+        backHref="/projects"
+        backLabel="Projects"
+      />
       <CreateProjectForm companies={companies} />
     </Shell>
   );

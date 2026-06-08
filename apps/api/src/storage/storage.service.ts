@@ -55,6 +55,19 @@ export class StorageService implements OnModuleInit {
     return this.client.presignedGetObject(BUCKET, key, expirySeconds);
   }
 
+  /** Fetch an object's bytes (for serving through the API). */
+  async getObject(key: string): Promise<Buffer | null> {
+    if (!this.enabled || !key) return null;
+    try {
+      const stream = await this.client.getObject(BUCKET, key);
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) chunks.push(chunk as Buffer);
+      return Buffer.concat(chunks);
+    } catch {
+      return null;
+    }
+  }
+
   async deleteFile(key: string): Promise<void> {
     if (!this.enabled || !key) return;
     await this.client.removeObject(BUCKET, key);

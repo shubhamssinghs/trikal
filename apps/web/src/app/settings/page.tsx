@@ -24,7 +24,7 @@ export default async function SettingsPage() {
   const settings = await getSettings();
 
   return (
-    <Shell active="/settings" width="md">
+    <Shell active="/settings" width="xl">
       <h1 className="text-xl font-semibold mb-1">Settings</h1>
       <p className="text-sm text-muted mb-6">
         Configure your AI provider and API keys. Keys are stored securely and

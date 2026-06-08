@@ -4,6 +4,7 @@ import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
 import { PageHeader, Card, StatusBadge, EmptyState, Button } from "@/components/ui";
 import { CompanyActions } from "@/components/company-actions";
+import { CompanyLogo } from "@/components/logo-upload";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         subtitle={company.description}
         backHref="/companies"
         backLabel="Companies"
+        icon={<CompanyLogo companyId={company.id} hasLogo={Boolean(company.logoKey)} size={48} />}
         meta={
           company.website ? (
             <a href={company.website} target="_blank" rel="noreferrer"

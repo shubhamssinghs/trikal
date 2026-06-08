@@ -1,7 +1,8 @@
 import { api } from "./client";
 
 export type Company = {
-  id: string; name: string; description?: string;
+  id: string; name: string; description?: string; website?: string;
+  logoKey?: string | null;
   createdAt: string; _count?: { projects: number };
 };
 

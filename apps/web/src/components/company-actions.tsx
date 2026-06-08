@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { Modal, Button, Field, inputClass } from "./ui";
+import { LogoUpload } from "./logo-upload";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-interface Company { id: string; name: string; description?: string; website?: string }
+interface Company { id: string; name: string; description?: string; website?: string; logoKey?: string | null }
 
 export function CompanyActions({ company }: { company: Company }) {
   const router = useRouter();
@@ -60,6 +61,7 @@ export function CompanyActions({ company }: { company: Company }) {
       {editing && (
         <Modal title="Edit Company" onClose={() => setEditing(false)}>
           <form onSubmit={save} className="space-y-4">
+            <Field label="Logo"><LogoUpload companyId={company.id} existing={Boolean(company.logoKey)} /></Field>
             <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} /></Field>
             <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${inputClass} resize-none`} /></Field>
             <Field label="Website"><input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" className={inputClass} /></Field>

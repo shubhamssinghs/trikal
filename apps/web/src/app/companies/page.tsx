@@ -3,6 +3,7 @@ import { Plus, Building2, ArrowRight } from "lucide-react";
 import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
 import { PageHeader, Button, EmptyState } from "@/components/ui";
+import { CompanyLogo } from "@/components/logo-upload";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +32,7 @@ export default async function CompaniesPage() {
               className="group rounded-xl border border-border bg-surface shadow-sm px-5 py-4 hover:border-blue-500/30 transition-colors">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="grid place-items-center w-10 h-10 rounded-lg bg-surface-2 text-muted shrink-0">
-                    <Building2 size={18} />
-                  </div>
+                  <CompanyLogo companyId={c.id} hasLogo={Boolean(c.logoKey)} size={40} />
                   <div className="min-w-0">
                     <h2 className="font-medium text-foreground truncate">{c.name}</h2>
                     {c.description && <p className="text-sm text-muted truncate">{c.description}</p>}
