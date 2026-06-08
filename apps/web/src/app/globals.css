@@ -58,6 +58,26 @@ aside,
 }
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted) / 0.5); }
 
+/* React Flow controls / minimap — theme-aware (dark mode support) */
+.react-flow__controls {
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: rgb(var(--surface));
+  border-bottom: 1px solid rgb(var(--border));
+  color: rgb(var(--foreground));
+}
+.react-flow__controls-button:hover { background: rgb(var(--surface-2)); }
+.react-flow__controls-button svg { fill: rgb(var(--foreground)); }
+.react-flow__minimap {
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--border));
+  border-radius: 8px;
+}
+.react-flow__attribution { display: none; }
+
 /* Modal animations */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn {

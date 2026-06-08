@@ -8,12 +8,16 @@ import {
 } from "lucide-react";
 
 export type DLink = { type: string; id: string; label: string };
+export type BorderStyle = "solid" | "dashed" | "dotted";
 export type DNode = {
   id: string; type: string; label: string; layer?: string;
   x?: number; y?: number;
   width?: number; height?: number;
   color?: string; fontSize?: number;
-  /** Body text for note elements (title = label). */
+  /** Fine-grained styling (shapes/notes). Fall back to `color` when unset. */
+  fillColor?: string; borderColor?: string; borderWidth?: number; borderStyle?: BorderStyle;
+  textColor?: string;
+  /** Optional description shown under the label (any node). Title = label for notes. */
   body?: string;
   parentId?: string;
   link?: DLink;
@@ -229,6 +233,12 @@ export const EDGE_LABELPOS_OPTIONS = [
   { value: "bottom", label: "Below line" },
 ];
 
+export const BORDER_STYLE_OPTIONS = [
+  { value: "solid", label: "Solid" },
+  { value: "dashed", label: "Dashed" },
+  { value: "dotted", label: "Dotted" },
+];
+
 export const TEXT_TYPE = "text";
 export const GROUP_TYPE = "group";
 export const NOTE_TYPE = "note";
@@ -244,8 +254,8 @@ export const isNote = (type: string) => type === NOTE_TYPE;
 export const isIconNode = (type: string) => !isShape(type) && !isText(type) && !isGroup(type) && !isNote(type);
 
 /** Which React Flow node renderer to use for a given diagram node type. */
-export function rfTypeFor(type: string): "service" | "shape" | "text" | "group" | "note" {
-  if (isGroup(type)) return "group";
+export function rfTypeFor(type: string): "service" | "shape" | "text" | "container" | "note" {
+  if (isGroup(type)) return "container";
   if (isText(type)) return "text";
   if (isNote(type)) return "note";
   if (isShape(type)) return "shape";

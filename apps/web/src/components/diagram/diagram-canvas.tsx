@@ -13,7 +13,7 @@ import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search, Ma
 import { useRouter } from "next/navigation";
 import {
   type DiagramData, type DNode, type DEdge, type DLink, type EdgeLabelPos,
-  ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS, EDGE_LABELPOS_OPTIONS,
+  ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS, EDGE_LABELPOS_OPTIONS, BORDER_STYLE_OPTIONS,
   PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, isNote, defaultLabelFor, iconFor,
   LINK_TYPES, linkTypeMeta, linkHref,
 } from "@/lib/diagram";
@@ -58,11 +58,14 @@ function toFlow(data: DiagramData): { nodes: Node<NodeData>[]; edges: Edge[] } {
       id: n.id,
       type: rfType,
       position: { x: n.x ?? 80 + (i % 4) * 240, y: n.y ?? 80 + Math.floor(i / 4) * 160 },
-      data: { label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize, body: n.body, link: n.link },
+      data: {
+        label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize, body: n.body, link: n.link,
+        fillColor: n.fillColor, borderColor: n.borderColor, borderWidth: n.borderWidth, borderStyle: n.borderStyle, textColor: n.textColor,
+      },
     };
     if (typeof n.width === "number") node.width = n.width;
     if (typeof n.height === "number") node.height = n.height;
-    if (rfType === "group") node.zIndex = -1;
+    if (rfType === "container") node.zIndex = -1;
     return node;
   });
   const edges: Edge[] = data.edges.map((e) =>
@@ -84,6 +87,7 @@ function fromFlow(title: string, description: string, nodes: Node<NodeData>[], e
     width: typeof n.width === "number" ? Math.round(n.width) : undefined,
     height: typeof n.height === "number" ? Math.round(n.height) : undefined,
     color: n.data.color, fontSize: n.data.fontSize, body: n.data.body, link: n.data.link,
+    fillColor: n.data.fillColor, borderColor: n.data.borderColor, borderWidth: n.data.borderWidth, borderStyle: n.data.borderStyle, textColor: n.data.textColor,
   }));
   const dedges: DEdge[] = edges.map((e) => {
     const d = (e.data ?? {}) as EdgeData;
@@ -193,6 +197,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
     };
     if (isGroup(type)) { n.width = 260; n.height = 170; n.zIndex = -1; }
     else if (isNote(type)) { n.width = 190; n.height = 96; }
+    else if (type === "shape.circle") { n.width = 96; n.height = 96; }
     else if (isShape(type)) { n.width = 130; n.height = 64; }
     record();
     setNodes((nds) => [...nds, n]);
@@ -380,9 +385,10 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
               )}
             </Labeled>
 
-            {isNote(node.data.ntype) && (
-              <Labeled label="Description">
-                <textarea value={node.data.body ?? ""} onChange={(e) => patchNode({ body: e.target.value })} rows={4} className={inputClass} placeholder="Leave a note…" />
+            {/* Optional description — for everything except free text & groups. */}
+            {!isText(node.data.ntype) && !isGroup(node.data.ntype) && (
+              <Labeled label="Description (optional)">
+                <textarea value={node.data.body ?? ""} onChange={(e) => patchNode({ body: e.target.value })} rows={isNote(node.data.ntype) ? 4 : 2} className={inputClass} placeholder={isNote(node.data.ntype) ? "Leave a note…" : "Extra detail shown under the label…"} />
               </Labeled>
             )}
 
@@ -392,20 +398,36 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
             {isShape(node.data.ntype) && (
               <Labeled label="Shape"><Select value={node.data.ntype} onChange={changeNodeType} options={SHAPE_TYPE_OPTIONS} placeholder="shape" /></Labeled>
             )}
-            {isText(node.data.ntype) && (
-              <Labeled label="Font size">
-                <Select
-                  value={String(node.data.fontSize ?? 14)}
-                  onChange={(v) => patchNode({ fontSize: Number(v) })}
-                  options={[12, 14, 16, 20, 24, 32].map((s) => ({ value: String(s), label: `${s}px` }))}
-                  placeholder="size"
-                />
-              </Labeled>
+
+            {/* Text — size (custom) + color, for any node that shows text. */}
+            {!isGroup(node.data.ntype) && (
+              <div className="grid grid-cols-2 gap-2">
+                <Labeled label="Text size">
+                  <input type="number" min={8} max={96} value={node.data.fontSize ?? (isText(node.data.ntype) ? 14 : 13)} onChange={(e) => patchNode({ fontSize: Number(e.target.value) || undefined })} className={inputClass} />
+                </Labeled>
+                <Labeled label="Text color"><ColorRow value={node.data.textColor ?? ""} onChange={(c) => patchNode({ textColor: c || undefined })} /></Labeled>
+              </div>
             )}
 
-            <Labeled label="Color">
-              <ColorRow value={node.data.color ?? ""} onChange={(c) => patchNode({ color: c || undefined })} />
-            </Labeled>
+            {/* Shapes: full fill / border styling. */}
+            {isShape(node.data.ntype) ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Labeled label="Fill color"><ColorRow value={node.data.fillColor ?? ""} onChange={(c) => patchNode({ fillColor: c || undefined })} /></Labeled>
+                  <Labeled label="Border color"><ColorRow value={node.data.borderColor ?? node.data.color ?? ""} onChange={(c) => patchNode({ borderColor: c || undefined })} /></Labeled>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Labeled label="Border width">
+                    <input type="number" min={0} max={12} value={node.data.borderWidth ?? 2} onChange={(e) => patchNode({ borderWidth: Number(e.target.value) })} className={inputClass} />
+                  </Labeled>
+                  <Labeled label="Border style"><Select value={node.data.borderStyle ?? "solid"} onChange={(v) => patchNode({ borderStyle: v as NodeData["borderStyle"] })} options={BORDER_STYLE_OPTIONS} placeholder="style" /></Labeled>
+                </div>
+              </>
+            ) : (
+              <Labeled label={isNote(node.data.ntype) ? "Accent / fill" : "Color"}>
+                <ColorRow value={node.data.color ?? ""} onChange={(c) => patchNode({ color: c || undefined })} />
+              </Labeled>
+            )}
 
             {projectId && (
             <Labeled label="Link to project">

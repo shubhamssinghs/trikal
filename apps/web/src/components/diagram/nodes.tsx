@@ -9,6 +9,11 @@ export type NodeData = {
   ntype: string;
   color?: string;
   fontSize?: number;
+  fillColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted";
+  textColor?: string;
   body?: string;
   link?: DLink;
 };
@@ -53,7 +58,7 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const accent = data.color || color;
   return (
     <div
-      className="rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 min-w-[120px]"
+      className="rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 min-w-[120px] max-w-[260px]"
       style={{ borderColor: selected ? accent : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${accent}` : undefined }}
     >
       <LinkBadge link={data.link} />
@@ -69,7 +74,10 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
           <Icon size={15} />
         </span>
       )}
-      <span className="text-xs font-medium text-foreground truncate max-w-[180px]">{data.label}</span>
+      <span className="min-w-0">
+        <span className="block font-medium truncate" style={{ fontSize: data.fontSize ?? 12, color: data.textColor || "rgb(var(--foreground))" }}>{data.label}</span>
+        {data.body && <span className="block text-[10px] text-muted leading-tight line-clamp-2">{data.body}</span>}
+      </span>
     </div>
   );
 }
@@ -88,30 +96,33 @@ const SHAPE_LABEL_PAD: Partial<Record<string, string>> = {
   triangle: "32% 8% 0",
 };
 
-/** Geometric shape node (rectangle / rounded / circle / diamond / cylinder / hexagon / parallelogram / triangle / note). */
+/** Geometric shape node with full styling: fill, border color/width/style, text color/size. */
 export function ShapeNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const kind = shapeKindOf(data.ntype) ?? "rectangle";
-  const color = data.color || "#64748b";
+  const accent = data.color || "#64748b";
+  const border = data.borderColor || accent;
+  const fill = data.fillColor || `${accent}14`;
   const radius =
     kind === "rounded" ? "0.6rem" : kind === "circle" ? "9999px" : kind === "cylinder" ? "50% / 16px" : "0";
   const clip = SHAPE_CLIP[kind];
 
   return (
     <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 56 }}>
-      <NodeResizer color={color} isVisible={selected} minWidth={90} minHeight={56} keepAspectRatio={kind === "circle"} />
+      <NodeResizer color={border} isVisible={selected} minWidth={90} minHeight={56} keepAspectRatio={kind === "circle"} />
       <LinkBadge link={data.link} />
-      <Handles color={color} />
+      <Handles color={border} />
       <div
         className="w-full h-full grid place-items-center text-center px-3"
         style={{
-          border: `2px solid ${color}`,
-          backgroundColor: `${color}14`,
+          border: `${data.borderWidth ?? 2}px ${data.borderStyle ?? "solid"} ${border}`,
+          backgroundColor: fill,
           borderRadius: radius,
           clipPath: clip,
         }}
       >
-        <span className="text-xs font-medium text-foreground leading-tight" style={{ padding: SHAPE_LABEL_PAD[kind] }}>
+        <span className="leading-tight" style={{ padding: SHAPE_LABEL_PAD[kind], fontSize: data.fontSize ?? 13, color: data.textColor || "rgb(var(--foreground))", fontWeight: 500 }}>
           {data.label}
+          {data.body && <span className="block text-[10px] font-normal opacity-70 leading-tight">{data.body}</span>}
         </span>
       </div>
     </div>
@@ -159,18 +170,19 @@ export function GroupNode({ data, selected }: NodeProps<Node<NodeData>>) {
 /** Sticky note for leaving annotations — title + optional description body. */
 export function NoteNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const color = data.color || "#f59e0b";
+  const size = data.fontSize ?? 12;
   return (
     <div className="relative w-full h-full" style={{ minWidth: 150, minHeight: 70 }}>
       <NodeResizer color={color} isVisible={selected} minWidth={150} minHeight={70} />
       <div
         className="w-full h-full rounded-md shadow-sm p-2.5 text-left overflow-hidden"
-        style={{ backgroundColor: `${color}1f`, borderLeft: `3px solid ${color}`, outline: selected ? `1px solid ${color}` : undefined }}
+        style={{ backgroundColor: data.fillColor || `${color}1f`, borderLeft: `3px solid ${color}`, outline: selected ? `1px solid ${color}` : undefined }}
       >
-        <p className="text-xs font-semibold text-foreground leading-snug mb-0.5">{data.label || "Note"}</p>
+        <p className="font-semibold leading-snug mb-0.5" style={{ fontSize: size, color: data.textColor || "rgb(var(--foreground))" }}>{data.label || "Note"}</p>
         {data.body ? (
-          <p className="text-[11px] text-muted leading-snug whitespace-pre-wrap">{data.body}</p>
+          <p className="text-muted leading-snug whitespace-pre-wrap" style={{ fontSize: size - 1 }}>{data.body}</p>
         ) : (
-          <p className="text-[11px] text-muted/60 italic leading-snug">Add a description…</p>
+          <p className="text-muted/60 italic leading-snug" style={{ fontSize: size - 1 }}>Add a description…</p>
         )}
       </div>
     </div>
@@ -181,6 +193,8 @@ export const nodeTypes = {
   service: ServiceNode,
   shape: ShapeNode,
   text: TextNode,
-  group: GroupNode,
+  // NB: "group" is a reserved React Flow type with default border/background;
+  // use "container" so our single dashed border isn't doubled up.
+  container: GroupNode,
   note: NoteNode,
 };
