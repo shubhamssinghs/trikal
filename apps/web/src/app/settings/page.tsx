@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SettingsForm } from "@/components/settings-form";
+import { Nav } from "@/components/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +19,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <nav className="border-b border-gray-800 px-6 py-3 flex items-center gap-6">
-        <Link href="/" className="font-semibold text-white">Trikal</Link>
-        <Link href="/" className="text-sm text-gray-400 hover:text-white">Today</Link>
-        <Link href="/companies" className="text-sm text-gray-400 hover:text-white">Companies</Link>
-        <Link href="/projects" className="text-sm text-gray-400 hover:text-white">Projects</Link>
-        <Link href="/settings" className="text-sm text-white">Settings</Link>
-      </nav>
+      <Nav active="/settings" />
 
       <main className="max-w-2xl mx-auto px-6 py-8">
         <h1 className="text-xl font-semibold mb-1">Settings</h1>

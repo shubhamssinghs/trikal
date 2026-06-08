@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
+import { Nav } from "@/components/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +15,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <nav className="border-b border-gray-800 px-6 py-3 flex items-center gap-6">
-        <Link href="/" className="font-semibold text-white">Trikal</Link>
-        <Link href="/" className="text-sm text-gray-400 hover:text-white">Today</Link>
-        <Link href="/companies" className="text-sm text-gray-400 hover:text-white">Companies</Link>
-        <Link href="/projects" className="text-sm text-gray-400 hover:text-white">Projects</Link>
-      </nav>
+      <Nav active="/companies" />
 
       <main className="max-w-5xl mx-auto px-6 py-6">
         <div className="mb-6">

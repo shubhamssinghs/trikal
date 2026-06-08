@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { queries } from "@/lib/api/queries";
+import { Nav } from "@/components/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,7 @@ export default async function TodayPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <nav className="border-b border-gray-800 px-6 py-3 flex items-center gap-6">
-        <span className="font-semibold text-white">Trikal</span>
-        <Link href="/" className="text-sm text-white">Today</Link>
-        <Link href="/companies" className="text-sm text-gray-400 hover:text-white">Companies</Link>
-        <Link href="/projects" className="text-sm text-gray-400 hover:text-white">Projects</Link>
-        <Link href="/settings" className="text-sm text-gray-400 hover:text-white ml-auto">Settings</Link>
-      </nav>
+      <Nav active="/" />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {/* Header */}
