@@ -7,10 +7,12 @@ import { KnowledgeService } from "../knowledge/knowledge.service";
  * Diagram data shape (mirrors @trikal/diagram's DiagramSchema). Kept local so
  * the API has no extra workspace dependency and can hot-reload in dev.
  */
+type DLink = { type: string; id: string; label: string };
 type DNode = {
   id: string; type: string; label: string; layer?: string;
   x?: number; y?: number; width?: number; height?: number;
   color?: string; fontSize?: number; parentId?: string;
+  link?: DLink;
   metadata?: Record<string, unknown>;
 };
 type DEdge = {
@@ -182,6 +184,23 @@ export class DiagramsService {
     return this.prisma.diagram.delete({ where: { id } });
   }
 
+  /** Project entities a diagram node can be linked to. */
+  async linkTargets(projectId: string, organizationId: string) {
+    await this.assertProject(projectId, organizationId);
+    const [knowledge, risks, members, milestones] = await Promise.all([
+      this.prisma.knowledgeItem.findMany({ where: { projectId }, select: { id: true, title: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+      this.prisma.risk.findMany({ where: { projectId }, select: { id: true, title: true }, orderBy: { createdAt: "desc" } }),
+      this.prisma.member.findMany({ where: { projectId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      this.prisma.milestone.findMany({ where: { projectId }, select: { id: true, name: true }, orderBy: { dueDate: "asc" } }),
+    ]);
+    return {
+      knowledge: knowledge.map((k) => ({ id: k.id, label: k.title })),
+      risk: risks.map((r) => ({ id: r.id, label: r.title })),
+      member: members.map((m) => ({ id: m.id, label: m.name })),
+      milestone: milestones.map((m) => ({ id: m.id, label: m.name })),
+    };
+  }
+
   /** Generate a diagram of a given kind from project knowledge + an optional focus prompt. */
   async generate(projectId: string, organizationId: string, prompt?: string, kindInput?: string) {
     const project = await this.assertProject(projectId, organizationId);
@@ -267,6 +286,10 @@ export class DiagramsService {
         color: typeof n.color === "string" ? n.color : undefined,
         fontSize: typeof n.fontSize === "number" ? n.fontSize : undefined,
         parentId: typeof n.parentId === "string" ? n.parentId : undefined,
+        link:
+          n.link && typeof n.link.type === "string" && typeof n.link.id === "string"
+            ? { type: n.link.type, id: n.link.id, label: String(n.link.label ?? "") }
+            : undefined,
         metadata: typeof n.metadata === "object" && n.metadata ? n.metadata : undefined,
       });
     });

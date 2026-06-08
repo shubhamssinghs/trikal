@@ -19,6 +19,12 @@ export class DiagramsController {
     return this.diagrams.listByProject(projectId, DEV_ORG_ID);
   }
 
+  // Must precede the ":id" route so it is not captured as an id.
+  @Get("link-targets")
+  linkTargets(@Query("projectId") projectId: string) {
+    return this.diagrams.linkTargets(projectId, DEV_ORG_ID);
+  }
+
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.diagrams.findOne(id, DEV_ORG_ID);

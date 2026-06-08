@@ -1,14 +1,31 @@
 "use client";
 
+import { Link2 } from "lucide-react";
 import { Handle, Position, NodeResizer, type NodeProps, type Node } from "@xyflow/react";
-import { iconFor, shapeKindOf } from "@/lib/diagram";
+import { iconFor, shapeKindOf, linkTypeMeta, type DLink } from "@/lib/diagram";
 
 export type NodeData = {
   label: string;
   ntype: string;
   color?: string;
   fontSize?: number;
+  link?: DLink;
 };
+
+/** Small badge shown on a node that's linked to a project entity. */
+function LinkBadge({ link }: { link?: DLink }) {
+  if (!link) return null;
+  const c = linkTypeMeta(link.type).color;
+  return (
+    <span
+      className="absolute -top-2 -right-2 grid place-items-center w-4 h-4 rounded-full border border-surface"
+      style={{ backgroundColor: c, color: "#fff" }}
+      title={`${linkTypeMeta(link.type).label}: ${link.label}`}
+    >
+      <Link2 size={9} />
+    </span>
+  );
+}
 
 const HSTYLE = { width: 9, height: 9 };
 
@@ -31,6 +48,7 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
       className="rounded-lg border bg-surface shadow-sm px-3 py-2 flex items-center gap-2 min-w-[120px]"
       style={{ borderColor: selected ? accent : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${accent}` : undefined }}
     >
+      <LinkBadge link={data.link} />
       <LR color={accent} />
       {svg ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -56,6 +74,7 @@ export function ShapeNode({ data, selected }: NodeProps<Node<NodeData>>) {
   return (
     <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 56 }}>
       <NodeResizer color={color} isVisible={selected} minWidth={90} minHeight={56} keepAspectRatio={kind === "circle"} />
+      <LinkBadge link={data.link} />
       <LR color={color} />
       <div
         className="w-full h-full grid place-items-center text-center px-3"

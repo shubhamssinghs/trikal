@@ -5,12 +5,14 @@ import {
   ArrowRightLeft, CalendarClock, Activity, type LucideIcon,
 } from "lucide-react";
 
+export type DLink = { type: string; id: string; label: string };
 export type DNode = {
   id: string; type: string; label: string; layer?: string;
   x?: number; y?: number;
   width?: number; height?: number;
   color?: string; fontSize?: number;
   parentId?: string;
+  link?: DLink;
   metadata?: Record<string, unknown>;
 };
 export type DEdge = {
@@ -196,6 +198,25 @@ export function defaultLabelFor(type: string): string {
 
 export function emptyDiagram(title = "Untitled diagram"): DiagramData {
   return { title, description: "", style: "default", layers: [], nodes: [], edges: [] };
+}
+
+/* ── Node → project entity links ────────────────────────────────────────── */
+
+export const LINK_TYPES: { value: string; label: string; color: string }[] = [
+  { value: "knowledge", label: "Knowledge item", color: "#2563eb" },
+  { value: "risk", label: "Risk", color: "#dc2626" },
+  { value: "member", label: "Member", color: "#7c3aed" },
+  { value: "milestone", label: "Milestone", color: "#16a34a" },
+];
+
+export function linkTypeMeta(type?: string) {
+  return LINK_TYPES.find((t) => t.value === type) ?? LINK_TYPES[0];
+}
+
+/** Where clicking a linked entity should navigate within the project. */
+export function linkHref(projectId: string, link: DLink): string {
+  if (link.type === "knowledge") return `/projects/${projectId}/transcripts`;
+  return `/projects/${projectId}`;
 }
 
 /* ── Diagram kinds (type picker, badges, templates) ─────────────────────── */

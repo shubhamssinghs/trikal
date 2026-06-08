@@ -40,7 +40,7 @@ export default async function DiagramEditorPage({ params }: { params: Promise<{ 
       {isMermaidKind(diagram.kind) ? (
         <MermaidCanvas diagramId={diagram.id} kind={diagram.kind ?? "sequence"} initial={initial} />
       ) : (
-        <DiagramCanvas diagramId={diagram.id} initial={initial} />
+        <DiagramCanvas projectId={id} diagramId={diagram.id} initial={initial} />
       )}
     </Shell>
   );

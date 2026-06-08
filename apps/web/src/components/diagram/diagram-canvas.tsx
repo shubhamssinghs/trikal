@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls,
   MiniMap, addEdge, useNodesState, useEdgesState, useReactFlow,
@@ -8,12 +9,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
-import { Trash2, Save, Download, Check, Wand2 } from "lucide-react";
+import { Trash2, Save, Download, Check, Wand2, ExternalLink, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  type DiagramData, type DNode, type DEdge,
+  type DiagramData, type DNode, type DEdge, type DLink,
   ICON_TYPE_OPTIONS, SHAPE_TYPE_OPTIONS, EDGE_SHAPE_OPTIONS, EDGE_STYLE_OPTIONS,
   PALETTE, rfTypeFor, isIconNode, isShape, isText, isGroup, defaultLabelFor,
+  LINK_TYPES, linkTypeMeta, linkHref,
 } from "@/lib/diagram";
 import { nodeTypes, type NodeData } from "./nodes";
 import { autoLayout } from "./layout";
@@ -55,7 +57,7 @@ function toFlow(data: DiagramData): { nodes: Node<NodeData>[]; edges: Edge[] } {
       id: n.id,
       type: rfType,
       position: { x: n.x ?? 80 + (i % 4) * 240, y: n.y ?? 80 + Math.floor(i / 4) * 160 },
-      data: { label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize },
+      data: { label: n.label, ntype: n.type, color: n.color, fontSize: n.fontSize, link: n.link },
     };
     if (typeof n.width === "number") node.width = n.width;
     if (typeof n.height === "number") node.height = n.height;
@@ -77,7 +79,7 @@ function fromFlow(title: string, description: string, nodes: Node<NodeData>[], e
     x: Math.round(n.position.x), y: Math.round(n.position.y),
     width: typeof n.width === "number" ? Math.round(n.width) : undefined,
     height: typeof n.height === "number" ? Math.round(n.height) : undefined,
-    color: n.data.color, fontSize: n.data.fontSize,
+    color: n.data.color, fontSize: n.data.fontSize, link: n.data.link,
   }));
   const dedges: DEdge[] = edges.map((e) => {
     const d = (e.data ?? {}) as EdgeData;
@@ -95,7 +97,10 @@ function fromFlow(title: string, description: string, nodes: Node<NodeData>[], e
 
 /* ── editor ─────────────────────────────────────────────────────────────── */
 
-function Editor({ diagramId, initial }: { diagramId: string; initial: DiagramData }) {
+type LinkOption = { id: string; label: string };
+type LinkTargets = Record<string, LinkOption[]>;
+
+function Editor({ projectId, diagramId, initial }: { projectId: string; diagramId: string; initial: DiagramData }) {
   const router = useRouter();
   const flow = useMemo(() => toFlow(initial), [initial]);
   const [nodes, setNodes, onNodesChange] = useNodesState(flow.nodes);
@@ -105,9 +110,18 @@ function Editor({ diagramId, initial }: { diagramId: string; initial: DiagramDat
   const [selEdge, setSelEdge] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [linkType, setLinkType] = useState("knowledge");
+  const [targets, setTargets] = useState<LinkTargets>({});
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const idRef = useRef(initial.nodes.length + initial.edges.length + 1);
   const { screenToFlowPosition, fitView } = useReactFlow();
+
+  useEffect(() => {
+    fetch(`${API_BASE}/diagrams/link-targets?projectId=${projectId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then(setTargets)
+      .catch(() => {});
+  }, [projectId]);
 
   const node = nodes.find((n) => n.id === selNode) ?? null;
   const edge = edges.find((e) => e.id === selEdge) ?? null;
@@ -298,6 +312,35 @@ function Editor({ diagramId, initial }: { diagramId: string; initial: DiagramDat
               <ColorRow value={node.data.color ?? ""} onChange={(c) => patchNode({ color: c || undefined })} />
             </Labeled>
 
+            <Labeled label="Link to project">
+              {node.data.link ? (
+                <div className="flex items-center gap-1.5">
+                  <Link
+                    href={linkHref(projectId, node.data.link)}
+                    className="flex-1 min-w-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs truncate"
+                    style={{ color: linkTypeMeta(node.data.link.type).color, backgroundColor: `${linkTypeMeta(node.data.link.type).color}14` }}
+                  >
+                    <ExternalLink size={11} className="shrink-0" />
+                    <span className="truncate">{node.data.link.label}</span>
+                  </Link>
+                  <button onClick={() => patchNode({ link: undefined })} title="Unlink" className="p-1 rounded text-muted hover:text-foreground hover:bg-surface-2"><X size={13} /></button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Select value={linkType} onChange={setLinkType} options={LINK_TYPES.map((t) => ({ value: t.value, label: t.label }))} placeholder="type" />
+                  <Select
+                    value=""
+                    onChange={(id) => {
+                      const opt = (targets[linkType] ?? []).find((t) => t.id === id);
+                      if (opt) patchNode({ link: { type: linkType, id: opt.id, label: opt.label } });
+                    }}
+                    options={(targets[linkType] ?? []).map((t) => ({ value: t.id, label: t.label }))}
+                    placeholder={(targets[linkType] ?? []).length ? `Select ${linkTypeMeta(linkType).label.toLowerCase()}…` : "None in this project"}
+                  />
+                </div>
+              )}
+            </Labeled>
+
             {!isText(node.data.ntype) && (
               <p className="text-[11px] text-muted">Drag the right dot to another node&apos;s left dot to connect. {!isIconNode(node.data.ntype) && "Drag a corner to resize."}</p>
             )}
@@ -357,10 +400,10 @@ function ColorRow({ value, onChange }: { value: string; onChange: (c: string) =>
   );
 }
 
-export function DiagramCanvas({ diagramId, initial }: { diagramId: string; initial: DiagramData }) {
+export function DiagramCanvas({ projectId, diagramId, initial }: { projectId: string; diagramId: string; initial: DiagramData }) {
   return (
     <ReactFlowProvider>
-      <Editor diagramId={diagramId} initial={initial} />
+      <Editor projectId={projectId} diagramId={diagramId} initial={initial} />
     </ReactFlowProvider>
   );
 }
