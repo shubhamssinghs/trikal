@@ -4,7 +4,22 @@ import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-export type AuthUser = { sub: string; name?: string; email?: string; picture?: string; devMode?: boolean };
+export type AuthUser = {
+  sub: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  email?: string;
+  email_verified?: boolean;
+  picture?: string;
+  devMode?: boolean;
+};
+
+export function displayName(u: AuthUser): string {
+  if (u.name) return u.name;
+  const full = [u.given_name, u.family_name].filter(Boolean).join(" ").trim();
+  return full || u.email || "User";
+}
 
 export function login() {
   // Server-side OIDC flow: hand off to the API, which redirects to Trishul IAM
