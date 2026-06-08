@@ -51,7 +51,7 @@ export function SettingsView({
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
       {/* Sub-nav */}
-      <nav className="space-y-0.5 md:sticky md:top-0 md:self-start">
+      <nav className="space-y-0.5 md:sticky md:top-6 md:self-start">
         {SECTIONS.map((s) => {
           const Icon = s.icon;
           const isActive = active === s.id;
