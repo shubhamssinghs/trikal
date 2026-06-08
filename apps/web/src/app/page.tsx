@@ -40,17 +40,17 @@ export default async function TodayPage() {
   const atRiskProjects = projects.filter((p) => p.status === "AT_RISK");
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <Nav active="/" />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold">Today</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-muted mt-0.5">
             {new Date().toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
-          {briefing?.greeting && <p className="text-sm text-gray-300 mt-2 italic">{briefing.greeting}</p>}
+          {briefing?.greeting && <p className="text-sm text-foreground mt-2 italic">{briefing.greeting}</p>}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -58,44 +58,44 @@ export default async function TodayPage() {
 
             {/* AI Priorities */}
             {briefing && briefing.topPriorities.length > 0 && (
-              <section className="rounded-lg border border-blue-900/40 bg-gray-900 p-4">
+              <section className="rounded-lg border border-blue-900/40 bg-surface p-4">
                 <h2 className="text-sm font-medium text-blue-400 mb-3">AI Priorities</h2>
                 <div className="space-y-2">
                   {briefing.topPriorities.map((p, i) => (
                     <div key={i} className={`rounded border px-3 py-2 ${urgencyColor[p.urgency] ?? urgencyColor.low}`}>
-                      <p className="text-sm text-gray-200">{p.text}</p>
+                      <p className="text-sm text-foreground">{p.text}</p>
                       <p className="text-xs opacity-60 mt-0.5">{p.projectName} · {p.urgency}</p>
                     </div>
                   ))}
                 </div>
                 {briefing.insight && (
-                  <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-800">{briefing.insight}</p>
+                  <p className="text-xs text-muted mt-3 pt-3 border-t border-border">{briefing.insight}</p>
                 )}
               </section>
             )}
 
             {/* Active Projects */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+            <section className="rounded-lg border border-border bg-surface p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-gray-300">
-                  Active Projects <span className="text-gray-500">({activeProjects.length})</span>
+                <h2 className="text-sm font-medium text-foreground">
+                  Active Projects <span className="text-muted">({activeProjects.length})</span>
                 </h2>
                 <Link href="/projects/new" className="text-xs text-blue-400 hover:text-blue-300">+ New</Link>
               </div>
               {activeProjects.length === 0 ? (
-                <p className="text-sm text-gray-500">No active projects. <Link href="/projects/new" className="text-blue-400 hover:underline">Create one</Link>.</p>
+                <p className="text-sm text-muted">No active projects. <Link href="/projects/new" className="text-blue-400 hover:underline">Create one</Link>.</p>
               ) : (
                 <div className="space-y-2">
                   {activeProjects.map((p) => (
                     <Link key={p.id} href={`/projects/${p.id}`}
-                      className="flex items-center justify-between rounded border border-gray-700 bg-gray-800/50 px-3 py-2 hover:bg-gray-800 transition-colors">
+                      className="flex items-center justify-between rounded border border-border bg-surface-2/50 px-3 py-2 hover:bg-surface-2 transition-colors">
                       <div>
-                        <p className="text-sm font-medium text-white">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.company?.name}</p>
+                        <p className="text-sm font-medium text-foreground">{p.name}</p>
+                        <p className="text-xs text-muted">{p.company?.name}</p>
                       </div>
                       <div className="text-right">
                         <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                        <p className="text-xs text-gray-500 mt-0.5">{p._count?.recommendations ?? 0} recs</p>
+                        <p className="text-xs text-muted mt-0.5">{p._count?.recommendations ?? 0} recs</p>
                       </div>
                     </Link>
                   ))}
@@ -105,13 +105,13 @@ export default async function TodayPage() {
 
             {/* At Risk */}
             {atRiskProjects.length > 0 && (
-              <section className="rounded-lg border border-amber-900/40 bg-gray-900 p-4">
+              <section className="rounded-lg border border-amber-900/40 bg-surface p-4">
                 <h2 className="text-sm font-medium text-amber-400 mb-3">At Risk ({atRiskProjects.length})</h2>
                 <div className="space-y-2">
                   {atRiskProjects.map((p) => (
                     <Link key={p.id} href={`/projects/${p.id}`}
                       className="flex items-center justify-between rounded border border-amber-900/30 bg-amber-900/10 px-3 py-2 hover:bg-amber-900/20 transition-colors">
-                      <p className="text-sm font-medium text-white">{p.name}</p>
+                      <p className="text-sm font-medium text-foreground">{p.name}</p>
                       <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
                     </Link>
                   ))}
@@ -122,8 +122,8 @@ export default async function TodayPage() {
 
           <aside className="space-y-4">
             {/* Stats */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <h2 className="text-sm font-medium text-gray-300 mb-3">Overview</h2>
+            <section className="rounded-lg border border-border bg-surface p-4">
+              <h2 className="text-sm font-medium text-foreground mb-3">Overview</h2>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: "Companies", value: companies.length },
@@ -131,31 +131,31 @@ export default async function TodayPage() {
                   { label: "Approvals", value: briefing?.pendingApprovals ?? "—", highlight: (briefing?.pendingApprovals ?? 0) > 0 },
                   { label: "Open Risks", value: briefing?.openRisks ?? "—", highlight: (briefing?.openRisks ?? 0) > 0 },
                 ].map((s) => (
-                  <div key={s.label} className="rounded bg-gray-800 px-3 py-2">
-                    <p className={`text-lg font-semibold ${s.highlight ? "text-amber-400" : "text-white"}`}>{s.value}</p>
-                    <p className="text-xs text-gray-400">{s.label}</p>
+                  <div key={s.label} className="rounded bg-surface-2 px-3 py-2">
+                    <p className={`text-lg font-semibold ${s.highlight ? "text-amber-400" : "text-foreground"}`}>{s.value}</p>
+                    <p className="text-xs text-muted">{s.label}</p>
                   </div>
                 ))}
               </div>
             </section>
 
             {/* Companies */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+            <section className="rounded-lg border border-border bg-surface p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-gray-300">Companies</h2>
+                <h2 className="text-sm font-medium text-foreground">Companies</h2>
                 <Link href="/companies" className="text-xs text-blue-400 hover:underline">View all</Link>
               </div>
               {companies.length === 0 ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted">
                   <Link href="/companies/new" className="text-blue-400 hover:underline">Create your first company</Link>
                 </p>
               ) : (
                 <div className="space-y-1">
                   {companies.slice(0, 5).map((c) => (
                     <Link key={c.id} href={`/companies/${c.id}`}
-                      className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-gray-800 transition-colors">
-                      <span className="text-sm text-gray-300">{c.name}</span>
-                      <span className="text-xs text-gray-500">{c._count?.projects ?? 0} projects</span>
+                      className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-surface-2 transition-colors">
+                      <span className="text-sm text-foreground">{c.name}</span>
+                      <span className="text-xs text-muted">{c._count?.projects ?? 0} projects</span>
                     </Link>
                   ))}
                 </div>

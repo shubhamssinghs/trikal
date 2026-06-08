@@ -18,12 +18,12 @@ export default async function SettingsPage() {
   const settings = await getSettings();
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <Nav active="/settings" />
 
       <main className="max-w-2xl mx-auto px-6 py-8">
         <h1 className="text-xl font-semibold mb-1">Settings</h1>
-        <p className="text-sm text-gray-400 mb-6">Configure your AI provider and API keys. Keys are stored securely and never displayed in full.</p>
+        <p className="text-sm text-muted mb-6">Configure your AI provider and API keys. Keys are stored securely and never displayed in full.</p>
 
         {settings ? (
           <SettingsForm initial={settings} />

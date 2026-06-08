@@ -18,12 +18,12 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
   const transcripts = await getTranscripts(id);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <Nav active="/projects" />
 
       <main className="max-w-5xl mx-auto px-6 py-6">
         <div className="mb-6">
-          <Link href={`/projects/${id}`} className="text-xs text-gray-500 hover:text-gray-300">← Project</Link>
+          <Link href={`/projects/${id}`} className="text-xs text-muted hover:text-foreground">← Project</Link>
           <h1 className="text-xl font-semibold mt-1">Transcripts & Knowledge Base</h1>
         </div>
 
@@ -37,17 +37,17 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
 
         {/* Transcript list */}
         {transcripts.length > 0 && (
-          <section className="mt-4 rounded-lg border border-gray-800 bg-gray-900 p-4">
-            <h2 className="text-sm font-medium text-gray-300 mb-3">Uploaded Transcripts ({transcripts.length})</h2>
+          <section className="mt-4 rounded-lg border border-border bg-surface p-4">
+            <h2 className="text-sm font-medium text-foreground mb-3">Uploaded Transcripts ({transcripts.length})</h2>
             <div className="space-y-2">
               {transcripts.map((t: { id: string; title: string; occurredAt: string; processedAt?: string }) => (
-                <div key={t.id} className="flex items-center justify-between rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
+                <div key={t.id} className="flex items-center justify-between rounded border border-border bg-surface-2/30 px-3 py-2">
                   <div>
-                    <p className="text-sm text-white">{t.title}</p>
-                    <p className="text-xs text-gray-500">{new Date(t.occurredAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</p>
+                    <p className="text-sm text-foreground">{t.title}</p>
+                    <p className="text-xs text-muted">{new Date(t.occurredAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded ${
-                    t.processedAt ? "bg-emerald-900/50 text-emerald-400" : "bg-gray-700 text-gray-400"
+                    t.processedAt ? "bg-emerald-900/50 text-emerald-400" : "bg-surface-2 text-muted"
                   }`}>
                     {t.processedAt ? "Analysed" : "Pending"}
                   </span>

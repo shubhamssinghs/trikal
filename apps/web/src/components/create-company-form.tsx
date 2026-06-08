@@ -36,21 +36,21 @@ export function CreateCompanyForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Company Name *</label>
+        <label className="block text-xs font-medium text-muted mb-1">Company Name *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} required
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none"
           placeholder="Acme Healthcare" />
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
+        <label className="block text-xs font-medium text-muted mb-1">Description</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none resize-none"
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none resize-none"
           placeholder="Brief description of the company or client..." />
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Website</label>
+        <label className="block text-xs font-medium text-muted mb-1">Website</label>
         <input value={website} onChange={(e) => setWebsite(e.target.value)} type="url"
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none"
           placeholder="https://example.com" />
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}

@@ -33,24 +33,24 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     fetchJson<unknown[]>(`/stakeholders?projectId=${id}`),
   ]);
 
-  if (!project) return <div className="p-6 text-gray-400">Project not found.</div>;
+  if (!project) return <div className="p-6 text-muted">Project not found.</div>;
 
   const pending = recommendations.filter((r) => r.status === "PENDING");
   const approved = recommendations.filter((r) => r.status === "APPROVED");
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <Nav active="/projects" />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/projects" className="text-xs text-gray-500 hover:text-gray-300">← Projects</Link>
+          <Link href="/projects" className="text-xs text-muted hover:text-foreground">← Projects</Link>
           <div className="flex items-start justify-between mt-1">
             <div>
               <h1 className="text-xl font-semibold">{project.name}</h1>
-              {project.description && <p className="text-sm text-gray-400 mt-0.5">{project.description}</p>}
-              <p className="text-xs text-gray-500 mt-1">{project.company?.name}</p>
+              {project.description && <p className="text-sm text-muted mt-0.5">{project.description}</p>}
+              <p className="text-xs text-muted mt-1">{project.company?.name}</p>
             </div>
             <div className="flex items-center gap-2">
               <Link href={`/projects/${id}/transcripts`}
@@ -60,7 +60,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <span className={`text-xs px-2 py-1 rounded ${
                 project.status === "ACTIVE" ? "bg-emerald-900/50 text-emerald-400" :
                 project.status === "AT_RISK" ? "bg-amber-900/50 text-amber-400" :
-                "bg-gray-800 text-gray-400"
+                "bg-surface-2 text-muted"
               }`}>{project.status}</span>
             </div>
           </div>
@@ -75,15 +75,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <RisksPanel projectId={id} risks={risks as never} />
 
             {approved.length > 0 && (
-              <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-                <h2 className="text-sm font-medium text-gray-300 mb-3">Approved Actions ({approved.length})</h2>
+              <section className="rounded-lg border border-border bg-surface p-4">
+                <h2 className="text-sm font-medium text-foreground mb-3">Approved Actions ({approved.length})</h2>
                 <div className="space-y-2">
                   {approved.map((r) => (
-                    <div key={r.id} className="flex items-start gap-3 rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
+                    <div key={r.id} className="flex items-start gap-3 rounded border border-border bg-surface-2/30 px-3 py-2">
                       <span className="text-emerald-500 mt-0.5">✓</span>
                       <div>
-                        <p className="text-sm text-gray-200">{r.title}</p>
-                        {r.description && <p className="text-xs text-gray-500 mt-0.5">{r.description}</p>}
+                        <p className="text-sm text-foreground">{r.title}</p>
+                        {r.description && <p className="text-xs text-muted mt-0.5">{r.description}</p>}
                       </div>
                     </div>
                   ))}
@@ -96,8 +96,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <aside className="space-y-4">
             <StakeholdersPanel projectId={id} stakeholders={stakeholders as never} />
 
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <h2 className="text-sm font-medium text-gray-300 mb-3">Project Info</h2>
+            <section className="rounded-lg border border-border bg-surface p-4">
+              <h2 className="text-sm font-medium text-foreground mb-3">Project Info</h2>
               <dl className="space-y-1.5">
                 {[
                   { label: "Company", value: project.company?.name ?? "—" },
@@ -108,8 +108,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   { label: "Recommendations", value: String(recommendations.length) },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between">
-                    <dt className="text-xs text-gray-500">{s.label}</dt>
-                    <dd className="text-xs text-gray-300">{s.value}</dd>
+                    <dt className="text-xs text-muted">{s.label}</dt>
+                    <dd className="text-xs text-foreground">{s.value}</dd>
                   </div>
                 ))}
               </dl>

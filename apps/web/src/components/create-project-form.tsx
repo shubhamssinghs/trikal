@@ -53,40 +53,40 @@ export function CreateProjectForm({ companies }: { companies: Company[] }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Project Name *</label>
+        <label className="block text-xs font-medium text-muted mb-1">Project Name *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} required
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none"
           placeholder="Patient Portal Modernization" />
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Company *</label>
+        <label className="block text-xs font-medium text-muted mb-1">Company *</label>
         <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} required
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none">
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
+        <label className="block text-xs font-medium text-muted mb-1">Description</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none resize-none"
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none resize-none"
           placeholder="What is this project about?" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Start Date</label>
+          <label className="block text-xs font-medium text-muted mb-1">Start Date</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Target End</label>
+          <label className="block text-xs font-medium text-muted mb-1">Target End</label>
           <input type="date" value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)}
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Compliance Profile</label>
+        <label className="block text-xs font-medium text-muted mb-1">Compliance Profile</label>
         <select value={complianceProfileId} onChange={(e) => setComplianceProfileId(e.target.value)}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none">
           {COMPLIANCE_PROFILES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
       </div>

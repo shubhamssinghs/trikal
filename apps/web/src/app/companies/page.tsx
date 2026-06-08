@@ -8,7 +8,7 @@ export default async function CompaniesPage() {
   const companies = await queries.companies().catch(() => []);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <Nav active="/companies" />
 
       <main className="max-w-5xl mx-auto px-6 py-6">
@@ -18,20 +18,20 @@ export default async function CompaniesPage() {
         </div>
 
         {companies.length === 0 ? (
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-8 text-center">
-            <p className="text-gray-400">No companies yet.</p>
+          <div className="rounded-lg border border-border bg-surface p-8 text-center">
+            <p className="text-muted">No companies yet.</p>
           </div>
         ) : (
           <div className="grid gap-3">
             {companies.map((c) => (
               <Link key={c.id} href={`/companies/${c.id}`}
-                className="rounded-lg border border-gray-800 bg-gray-900 px-5 py-4 hover:border-gray-600 transition-colors block">
+                className="rounded-lg border border-border bg-surface px-5 py-4 hover:border-muted transition-colors block">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="font-medium text-white">{c.name}</h2>
-                    {c.description && <p className="text-sm text-gray-400 mt-0.5">{c.description}</p>}
+                    <h2 className="font-medium text-foreground">{c.name}</h2>
+                    {c.description && <p className="text-sm text-muted mt-0.5">{c.description}</p>}
                   </div>
-                  <span className="text-sm text-gray-500">{c._count?.projects ?? 0} projects</span>
+                  <span className="text-sm text-muted">{c._count?.projects ?? 0} projects</span>
                 </div>
               </Link>
             ))}

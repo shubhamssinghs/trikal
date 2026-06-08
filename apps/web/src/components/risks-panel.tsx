@@ -47,33 +47,33 @@ export function RisksPanel({ projectId, risks: initial }: Props) {
   const open = risks.filter((r) => r.status === "open");
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-gray-300">Risks & Blockers <span className="text-gray-500">({open.length} open)</span></h2>
+        <h2 className="text-sm font-medium text-foreground">Risks & Blockers <span className="text-muted">({open.length} open)</span></h2>
         <button onClick={() => setAdding(!adding)} className="text-xs text-blue-400 hover:text-blue-300">+ Add</button>
       </div>
 
       {adding && (
         <form onSubmit={add} className="mb-3 space-y-2">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Risk description" autoFocus
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details (optional)" rows={2}
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none resize-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none resize-none" />
           <div className="flex gap-2">
             <select value={severity} onChange={(e) => setSeverity(e.target.value)}
-              className="rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-white focus:outline-none">
+              className="rounded border border-border bg-surface-2 px-2 py-1.5 text-sm text-foreground focus:outline-none">
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
             <button type="submit" className="rounded bg-blue-700 hover:bg-blue-600 px-3 py-1.5 text-xs text-white">Save</button>
-            <button type="button" onClick={() => setAdding(false)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-1.5 text-xs text-gray-300">Cancel</button>
+            <button type="button" onClick={() => setAdding(false)} className="rounded bg-surface-2 hover:bg-border px-3 py-1.5 text-xs text-foreground">Cancel</button>
           </div>
         </form>
       )}
 
       {open.length === 0 ? (
-        <p className="text-sm text-gray-500">No open risks.</p>
+        <p className="text-sm text-muted">No open risks.</p>
       ) : (
         <div className="space-y-2">
           {open.map((r) => (

@@ -71,16 +71,16 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   return (
     <form onSubmit={save} className="space-y-6">
       {/* Provider */}
-      <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-        <h2 className="text-sm font-medium text-gray-200 mb-3">LLM Provider</h2>
+      <section className="rounded-lg border border-border bg-surface p-5">
+        <h2 className="text-sm font-medium text-foreground mb-3">LLM Provider</h2>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {(["anthropic", "openai"] as const).map((p) => (
             <button key={p} type="button" onClick={() => onProviderChange(p)}
               className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                provider === p ? "border-blue-500 bg-blue-900/20" : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                provider === p ? "border-blue-500 bg-blue-900/20" : "border-border bg-surface-2 hover:border-muted"
               }`}>
-              <p className="text-sm font-medium text-white capitalize">{p === "anthropic" ? "Anthropic (Claude)" : "OpenAI (GPT)"}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-sm font-medium text-foreground capitalize">{p === "anthropic" ? "Anthropic (Claude)" : "OpenAI (GPT)"}</p>
+              <p className="text-xs text-muted mt-0.5">
                 {p === "anthropic"
                   ? (initial.anthropicConfigured ? "Key configured" : "No key set")
                   : (initial.openaiConfigured ? "Key configured" : "No key set")}
@@ -89,16 +89,16 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           ))}
         </div>
 
-        <label className="block text-xs font-medium text-gray-400 mb-1">Model</label>
+        <label className="block text-xs font-medium text-muted mb-1">Model</label>
         <select value={model} onChange={(e) => setModel(e.target.value)}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground focus:border-blue-500 focus:outline-none">
           {MODELS[provider].map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
       </section>
 
       {/* API Keys */}
-      <section className="rounded-lg border border-gray-800 bg-gray-900 p-5 space-y-4">
-        <h2 className="text-sm font-medium text-gray-200">API Keys</h2>
+      <section className="rounded-lg border border-border bg-surface p-5 space-y-4">
+        <h2 className="text-sm font-medium text-foreground">API Keys</h2>
 
         <KeyInput label="Anthropic API Key" placeholder="sk-ant-..." value={anthropicKey}
           onChange={setAnthropicKey} configured={initial.anthropicConfigured}
@@ -132,14 +132,14 @@ function KeyInput({ label, placeholder, value, onChange, configured, hint }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="block text-xs font-medium text-gray-400">{label}</label>
-        <span className={`text-xs ${configured ? "text-emerald-400" : "text-gray-600"}`}>
+        <label className="block text-xs font-medium text-muted">{label}</label>
+        <span className={`text-xs ${configured ? "text-emerald-400" : "text-muted"}`}>
           {configured ? "● configured" : "○ not set"}
         </span>
       </div>
       <input type="password" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none font-mono" />
-      <p className="text-xs text-gray-600 mt-1">{hint}</p>
+        className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none font-mono" />
+      <p className="text-xs text-muted mt-1">{hint}</p>
     </div>
   );
 }

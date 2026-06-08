@@ -28,19 +28,19 @@ export function KnowledgeSearch({ projectId }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-      <h2 className="text-sm font-medium text-gray-300 mb-3">Search Knowledge Base</h2>
+    <section className="rounded-lg border border-border bg-surface p-4">
+      <h2 className="text-sm font-medium text-foreground mb-3">Search Knowledge Base</h2>
       <form onSubmit={search} className="flex gap-2 mb-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search transcripts..."
-          className="flex-1 rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          className="flex-1 rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none"
         />
         <button
           type="submit"
           disabled={searching}
-          className="rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-3 py-2 text-sm text-gray-300 transition-colors"
+          className="rounded bg-surface-2 hover:bg-border disabled:opacity-50 px-3 py-2 text-sm text-foreground transition-colors"
         >
           {searching ? "..." : "Search"}
         </button>
@@ -49,15 +49,15 @@ export function KnowledgeSearch({ projectId }: Props) {
       {results.length > 0 && (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {results.map((r) => (
-            <div key={r.chunkId} className="rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
+            <div key={r.chunkId} className="rounded border border-border bg-surface-2/30 px-3 py-2">
               <p className="text-xs text-blue-400 mb-1">{r.source.title}</p>
-              <p className="text-xs text-gray-300 line-clamp-3">{r.content}</p>
+              <p className="text-xs text-foreground line-clamp-3">{r.content}</p>
             </div>
           ))}
         </div>
       )}
       {results.length === 0 && query && !searching && (
-        <p className="text-xs text-gray-500">No results for &ldquo;{query}&rdquo;</p>
+        <p className="text-xs text-muted">No results for &ldquo;{query}&rdquo;</p>
       )}
     </section>
   );

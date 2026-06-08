@@ -81,13 +81,13 @@ export function TranscriptUpload({ projectId }: Props) {
   const busy = status !== "idle" && status !== "error" && status !== "done";
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-gray-300">Upload Transcript</h2>
-        <div className="flex rounded overflow-hidden border border-gray-700 text-xs">
+        <h2 className="text-sm font-medium text-foreground">Upload Transcript</h2>
+        <div className="flex rounded overflow-hidden border border-border text-xs">
           {(["text", "file"] as Mode[]).map((m) => (
             <button key={m} onClick={() => { setMode(m); reset(); }}
-              className={`px-3 py-1 ${mode === m ? "bg-blue-700 text-white" : "text-gray-400 hover:text-white"}`}>
+              className={`px-3 py-1 ${mode === m ? "bg-blue-700 text-white" : "text-muted hover:text-foreground"}`}>
               {m === "text" ? "Paste text" : "Upload file"}
             </button>
           ))}
@@ -97,27 +97,27 @@ export function TranscriptUpload({ projectId }: Props) {
       <form onSubmit={submit} className="space-y-3">
         <input value={title} onChange={(e) => setTitle(e.target.value)}
           placeholder={mode === "file" ? "Title (optional, defaults to filename)" : "Meeting title"}
-          className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none" />
+          className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none" />
 
         {mode === "text" ? (
           <textarea value={content} onChange={(e) => setContent(e.target.value)}
             placeholder="Paste transcript here..." rows={7}
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none resize-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder-muted focus:border-blue-500 focus:outline-none resize-none" />
         ) : (
-          <div className="rounded border-2 border-dashed border-gray-700 bg-gray-800/50 px-4 py-6 text-center">
+          <div className="rounded border-2 border-dashed border-border bg-surface-2/50 px-4 py-6 text-center">
             <input ref={fileRef} type="file" accept=".txt,.pdf,.docx" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" id="file-input" />
             <label htmlFor="file-input" className="cursor-pointer">
               {file ? (
-                <p className="text-sm text-blue-400">{file.name} <span className="text-gray-500">({(file.size / 1024).toFixed(0)} KB)</span></p>
+                <p className="text-sm text-blue-400">{file.name} <span className="text-muted">({(file.size / 1024).toFixed(0)} KB)</span></p>
               ) : (
-                <p className="text-sm text-gray-400">Drop a <span className="text-blue-400">.txt, .pdf, or .docx</span> file here, or <span className="text-blue-400 underline">browse</span></p>
+                <p className="text-sm text-muted">Drop a <span className="text-blue-400">.txt, .pdf, or .docx</span> file here, or <span className="text-blue-400 underline">browse</span></p>
               )}
             </label>
           </div>
         )}
 
         {statusLabel[status] && (
-          <p className={`text-xs ${status === "error" ? "text-red-400" : status === "done" ? "text-emerald-400" : "text-gray-400"}`}>
+          <p className={`text-xs ${status === "error" ? "text-red-400" : status === "done" ? "text-emerald-400" : "text-muted"}`}>
             {statusLabel[status]}
           </p>
         )}

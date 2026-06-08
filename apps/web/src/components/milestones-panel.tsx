@@ -40,36 +40,36 @@ export function MilestonesPanel({ projectId, milestones: initial }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-gray-300">Milestones</h2>
+        <h2 className="text-sm font-medium text-foreground">Milestones</h2>
         <button onClick={() => setAdding(!adding)} className="text-xs text-blue-400 hover:text-blue-300">+ Add</button>
       </div>
 
       {adding && (
         <form onSubmit={add} className="mb-3 space-y-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Milestone name" autoFocus
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <div className="flex gap-2">
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              className="flex-1 rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+              className="flex-1 rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
             <button type="submit" className="rounded bg-blue-700 hover:bg-blue-600 px-3 py-1.5 text-xs text-white">Save</button>
-            <button type="button" onClick={() => setAdding(false)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-1.5 text-xs text-gray-300">Cancel</button>
+            <button type="button" onClick={() => setAdding(false)} className="rounded bg-surface-2 hover:bg-border px-3 py-1.5 text-xs text-foreground">Cancel</button>
           </div>
         </form>
       )}
 
       {milestones.length === 0 ? (
-        <p className="text-sm text-gray-500">No milestones yet.</p>
+        <p className="text-sm text-muted">No milestones yet.</p>
       ) : (
         <div className="space-y-1.5">
           {milestones.map((m) => (
-            <div key={m.id} className="flex items-center gap-2 rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
-              <button onClick={() => toggle(m)} className={`w-4 h-4 rounded border flex-shrink-0 ${m.status === "completed" ? "bg-emerald-600 border-emerald-600" : "border-gray-600"}`}>
-                {m.status === "completed" && <span className="text-white text-xs flex items-center justify-center">✓</span>}
+            <div key={m.id} className="flex items-center gap-2 rounded border border-border bg-surface-2/30 px-3 py-2">
+              <button onClick={() => toggle(m)} className={`w-4 h-4 rounded border flex-shrink-0 ${m.status === "completed" ? "bg-emerald-600 border-emerald-600" : "border-muted"}`}>
+                {m.status === "completed" && <span className="text-foreground text-xs flex items-center justify-center">✓</span>}
               </button>
-              <span className={`flex-1 text-sm ${m.status === "completed" ? "line-through text-gray-500" : "text-gray-200"}`}>{m.name}</span>
-              {m.dueDate && <span className="text-xs text-gray-500">{formatDate(m.dueDate)}</span>}
+              <span className={`flex-1 text-sm ${m.status === "completed" ? "line-through text-muted" : "text-foreground"}`}>{m.name}</span>
+              {m.dueDate && <span className="text-xs text-muted">{formatDate(m.dueDate)}</span>}
             </div>
           ))}
         </div>

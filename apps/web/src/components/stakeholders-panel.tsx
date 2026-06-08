@@ -27,40 +27,40 @@ export function StakeholdersPanel({ projectId, companyId, stakeholders: initial 
   };
 
   return (
-    <section className="rounded-lg border border-gray-800 bg-gray-900 p-4">
+    <section className="rounded-lg border border-border bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-gray-300">Stakeholders</h2>
+        <h2 className="text-sm font-medium text-foreground">Stakeholders</h2>
         <button onClick={() => setAdding(!adding)} className="text-xs text-blue-400 hover:text-blue-300">+ Add</button>
       </div>
 
       {adding && (
         <form onSubmit={add} className="mb-3 space-y-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" autoFocus required
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Role (e.g. Product Owner)"
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email"
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none" />
+            className="w-full rounded border border-border bg-surface-2 px-3 py-1.5 text-sm text-foreground focus:border-blue-500 focus:outline-none" />
           <div className="flex gap-2">
             <button type="submit" className="rounded bg-blue-700 hover:bg-blue-600 px-3 py-1.5 text-xs text-white">Save</button>
-            <button type="button" onClick={() => setAdding(false)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-1.5 text-xs text-gray-300">Cancel</button>
+            <button type="button" onClick={() => setAdding(false)} className="rounded bg-surface-2 hover:bg-border px-3 py-1.5 text-xs text-foreground">Cancel</button>
           </div>
         </form>
       )}
 
       {stakeholders.length === 0 ? (
-        <p className="text-sm text-gray-500">No stakeholders added.</p>
+        <p className="text-sm text-muted">No stakeholders added.</p>
       ) : (
         <div className="space-y-1.5">
           {stakeholders.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 rounded border border-gray-700 bg-gray-800/30 px-3 py-2">
-              <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-300 flex-shrink-0 font-medium">
+            <div key={s.id} className="flex items-center gap-3 rounded border border-border bg-surface-2/30 px-3 py-2">
+              <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-xs text-foreground flex-shrink-0 font-medium">
                 {s.name[0].toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-gray-200 truncate">{s.name}</p>
+                <p className="text-sm text-foreground truncate">{s.name}</p>
                 {(s.role || s.email) && (
-                  <p className="text-xs text-gray-500 truncate">{s.role}{s.role && s.email ? " · " : ""}{s.email}</p>
+                  <p className="text-xs text-muted truncate">{s.role}{s.role && s.email ? " · " : ""}{s.email}</p>
                 )}
               </div>
             </div>

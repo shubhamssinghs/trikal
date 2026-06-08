@@ -32,26 +32,26 @@ export function ApprovalQueue({ recommendations: initial }: Props) {
   };
 
   return (
-    <section className="rounded-lg border border-amber-900/40 bg-gray-900 p-4">
+    <section className="rounded-lg border border-amber-900/40 bg-surface p-4">
       <h2 className="text-sm font-medium text-amber-400 mb-3">
         Approval Queue{" "}
         <span className="text-amber-600">({recs.length})</span>
       </h2>
 
       {recs.length === 0 ? (
-        <p className="text-sm text-gray-500">No pending approvals.</p>
+        <p className="text-sm text-muted">No pending approvals.</p>
       ) : (
         <div className="space-y-2">
           {recs.map((r) => (
             <div key={r.id}
-              className="rounded border border-gray-700 bg-gray-800/50 px-3 py-3">
+              className="rounded border border-border bg-surface-2/50 px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">{r.title}</p>
+                  <p className="text-sm font-medium text-foreground">{r.title}</p>
                   {r.description && (
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{r.description}</p>
+                    <p className="text-xs text-muted mt-0.5 truncate">{r.description}</p>
                   )}
-                  <p className="text-xs text-gray-600 mt-1">{r.type}</p>
+                  <p className="text-xs text-muted mt-1">{r.type}</p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
@@ -64,7 +64,7 @@ export function ApprovalQueue({ recommendations: initial }: Props) {
                   <button
                     onClick={() => handle(r.id, "reject")}
                     disabled={loading === r.id}
-                    className="rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 px-2.5 py-1 text-xs font-medium text-gray-300 transition-colors"
+                    className="rounded bg-surface-2 hover:bg-border disabled:opacity-50 px-2.5 py-1 text-xs font-medium text-foreground transition-colors"
                   >
                     Reject
                   </button>
