@@ -1,8 +1,10 @@
 import {
-  User, Smartphone, Server, Database, ListOrdered, Lock, Cloud, ShieldAlert,
-  Boxes, HardDrive, KeyRound, Network, AppWindow, GitBranch, MessageSquare,
+  User, Smartphone, Server, Database, ListOrdered, Lock, Cloud,
+  Network, AppWindow, GitBranch, MessageSquare,
   Ticket, Users, Video, Mail, Box, Workflow, Share2,
-  ArrowRightLeft, CalendarClock, Activity, type LucideIcon,
+  ArrowRightLeft, CalendarClock, Activity,
+  Frame, Type, Square, Circle, Diamond, Cylinder, Hexagon, RectangleHorizontal, Triangle, StickyNote,
+  type LucideIcon,
 } from "lucide-react";
 
 export type DLink = { type: string; id: string; label: string };
@@ -108,8 +110,42 @@ const TECH_ICON_MAP: Record<string, IconDef> = Object.fromEntries(
   TECH.map((t) => [`tech.${t.file}`, { icon: Box, color: t.color, svg: `/icons/tech/${t.file}.svg` }]),
 );
 
+// AWS — official service icons. type = `aws.<file>`, svg in /public/icons/aws.
+const AWS: { file: string; label: string }[] = [
+  { file: "ec2", label: "EC2" }, { file: "lambda", label: "Lambda" }, { file: "ecs", label: "ECS" },
+  { file: "eks", label: "EKS" }, { file: "fargate", label: "Fargate" }, { file: "elastic-beanstalk", label: "Beanstalk" },
+  { file: "s3", label: "S3" },
+  { file: "rds", label: "RDS" }, { file: "aurora", label: "Aurora" }, { file: "dynamodb", label: "DynamoDB" },
+  { file: "redshift", label: "Redshift" }, { file: "elasticache", label: "ElastiCache" },
+  { file: "alb", label: "Load Balancer" }, { file: "cloudfront", label: "CloudFront" }, { file: "route53", label: "Route 53" },
+  { file: "vpc", label: "VPC" }, { file: "api-gateway", label: "API Gateway" }, { file: "appsync", label: "AppSync" },
+  { file: "sqs", label: "SQS" }, { file: "sns", label: "SNS" }, { file: "eventbridge", label: "EventBridge" },
+  { file: "kinesis", label: "Kinesis" }, { file: "step-functions", label: "Step Functions" },
+  { file: "iam", label: "IAM" }, { file: "cognito", label: "Cognito" }, { file: "kms", label: "KMS" },
+  { file: "secrets-manager", label: "Secrets Mgr" }, { file: "waf", label: "WAF" },
+  { file: "cloudwatch", label: "CloudWatch" }, { file: "cloudtrail", label: "CloudTrail" }, { file: "cloudformation", label: "CloudFormation" },
+  { file: "amplify", label: "Amplify" }, { file: "athena", label: "Athena" }, { file: "glue", label: "Glue" },
+  { file: "ses", label: "SES" },
+];
+const AWS_ICON_MAP: Record<string, IconDef> = Object.fromEntries(
+  AWS.map((a) => [`aws.${a.file}`, { icon: Cloud, color: "#ff9900", svg: `/icons/aws/${a.file}.svg` }]),
+);
+
+// Azure — service icons available in /public/icons/azure. `key` keeps the
+// stable node type (referenced by templates / AI), `file` is the SVG name.
+const AZURE: { key: string; file: string; label: string }[] = [
+  { key: "app-service", file: "app-service", label: "App Service" },
+  { key: "sql", file: "sql-database", label: "SQL Database" },
+  { key: "devops", file: "devops", label: "DevOps" },
+];
+const AZURE_ICON_MAP: Record<string, IconDef> = Object.fromEntries(
+  AZURE.map((a) => [`azure.${a.key}`, { icon: AppWindow, color: "#0078d4", svg: `/icons/azure/${a.file}.svg` }]),
+);
+
 const ICON_MAP: Record<string, IconDef> = {
   ...TECH_ICON_MAP,
+  ...AWS_ICON_MAP,
+  ...AZURE_ICON_MAP,
   // Generic concepts — no brand, keep clean lucide glyphs.
   "generic.user": { icon: User, color: "#64748b" },
   "generic.mobile": { icon: Smartphone, color: "#64748b" },
@@ -117,19 +153,6 @@ const ICON_MAP: Record<string, IconDef> = {
   "generic.database": { icon: Database, color: "#16a34a" },
   "generic.queue": { icon: ListOrdered, color: "#d97706" },
   "generic.lock": { icon: Lock, color: "#dc2626" },
-  // AWS — official service icons.
-  "aws.cloudfront": { icon: Cloud, color: "#ea580c", svg: "/icons/aws/cloudfront.svg" },
-  "aws.waf": { icon: ShieldAlert, color: "#dc2626", svg: "/icons/aws/waf.svg" },
-  "aws.ecs": { icon: Boxes, color: "#ea580c", svg: "/icons/aws/ecs.svg" },
-  "aws.rds": { icon: Database, color: "#2563eb", svg: "/icons/aws/rds.svg" },
-  "aws.s3": { icon: HardDrive, color: "#16a34a", svg: "/icons/aws/s3.svg" },
-  "aws.kms": { icon: KeyRound, color: "#dc2626", svg: "/icons/aws/kms.svg" },
-  "aws.elasticache": { icon: Database, color: "#dc2626", svg: "/icons/aws/elasticache.svg" },
-  "aws.alb": { icon: Network, color: "#7c3aed", svg: "/icons/aws/alb.svg" },
-  // Azure — service icons.
-  "azure.app-service": { icon: AppWindow, color: "#0891b2", svg: "/icons/azure/app-service.svg" },
-  "azure.sql": { icon: Database, color: "#0891b2", svg: "/icons/azure/sql-database.svg" },
-  "azure.devops": { icon: GitBranch, color: "#0891b2", svg: "/icons/azure/devops.svg" },
   // Tools — brand logos.
   "tools.slack": { icon: MessageSquare, color: "#7c3aed", svg: "/icons/tools/slack.svg" },
   "tools.jira": { icon: Ticket, color: "#2563eb", svg: "/icons/tools/jira.svg" },
@@ -138,8 +161,23 @@ const ICON_MAP: Record<string, IconDef> = {
   "tools.outlook": { icon: Mail, color: "#0891b2", svg: "/icons/tools/outlook.svg" },
 };
 
+/** Lucide glyphs for non-service node types (structure / shapes), used by the palette. */
+const GLYPHS: Record<string, { icon: LucideIcon; color: string }> = {
+  group: { icon: Frame, color: "#64748b" },
+  text: { icon: Type, color: "#64748b" },
+  "shape.rectangle": { icon: Square, color: "#64748b" },
+  "shape.rounded": { icon: Square, color: "#64748b" },
+  "shape.circle": { icon: Circle, color: "#64748b" },
+  "shape.diamond": { icon: Diamond, color: "#64748b" },
+  "shape.cylinder": { icon: Cylinder, color: "#64748b" },
+  "shape.hexagon": { icon: Hexagon, color: "#64748b" },
+  "shape.parallelogram": { icon: RectangleHorizontal, color: "#64748b" },
+  "shape.triangle": { icon: Triangle, color: "#64748b" },
+  "shape.note": { icon: StickyNote, color: "#64748b" },
+};
+
 export function iconFor(type: string): IconDef {
-  return ICON_MAP[type] ?? { icon: Box, color: "#64748b" };
+  return ICON_MAP[type] ?? GLYPHS[type] ?? { icon: Box, color: "#64748b" };
 }
 
 /** Service/brand icon node types, for the type picker in the inspector. */
@@ -149,7 +187,7 @@ export const NODE_TYPE_OPTIONS = ICON_TYPE_OPTIONS;
 
 /* ── Shape / text / group node families ─────────────────────────────────── */
 
-export type ShapeKind = "rectangle" | "rounded" | "circle" | "diamond" | "cylinder";
+export type ShapeKind = "rectangle" | "rounded" | "circle" | "diamond" | "cylinder" | "hexagon" | "parallelogram" | "triangle" | "note";
 
 export const SHAPE_KINDS: { type: string; kind: ShapeKind; label: string }[] = [
   { type: "shape.rectangle", kind: "rectangle", label: "Rectangle" },
@@ -157,6 +195,10 @@ export const SHAPE_KINDS: { type: string; kind: ShapeKind; label: string }[] = [
   { type: "shape.circle", kind: "circle", label: "Circle" },
   { type: "shape.diamond", kind: "diamond", label: "Decision" },
   { type: "shape.cylinder", kind: "cylinder", label: "Store" },
+  { type: "shape.hexagon", kind: "hexagon", label: "Hexagon" },
+  { type: "shape.parallelogram", kind: "parallelogram", label: "Data (I/O)" },
+  { type: "shape.triangle", kind: "triangle", label: "Triangle" },
+  { type: "shape.note", kind: "note", label: "Note" },
 ];
 
 export const SHAPE_TYPE_OPTIONS = SHAPE_KINDS.map((s) => ({ value: s.type, label: s.label }));
@@ -215,27 +257,8 @@ export const PALETTE: { category: string; items: { type: string; label: string }
       { type: "generic.lock", label: "Security" },
     ],
   },
-  {
-    category: "AWS",
-    items: [
-      { type: "aws.cloudfront", label: "CloudFront" },
-      { type: "aws.alb", label: "Load Balancer" },
-      { type: "aws.ecs", label: "ECS" },
-      { type: "aws.rds", label: "RDS" },
-      { type: "aws.s3", label: "S3" },
-      { type: "aws.elasticache", label: "ElastiCache" },
-      { type: "aws.waf", label: "WAF" },
-      { type: "aws.kms", label: "KMS" },
-    ],
-  },
-  {
-    category: "Azure",
-    items: [
-      { type: "azure.app-service", label: "App Service" },
-      { type: "azure.sql", label: "SQL Database" },
-      { type: "azure.devops", label: "DevOps" },
-    ],
-  },
+  { category: "AWS", items: AWS.map((a) => ({ type: `aws.${a.file}`, label: a.label })) },
+  { category: "Azure", items: AZURE.map((a) => ({ type: `azure.${a.key}`, label: a.label })) },
   {
     category: "Tools",
     items: [

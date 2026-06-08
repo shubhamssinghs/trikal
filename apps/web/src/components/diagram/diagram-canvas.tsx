@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Controls,
-  MiniMap, addEdge, useNodesState, useEdgesState, useReactFlow,
+  MiniMap, addEdge, useNodesState, useEdgesState, useReactFlow, ConnectionMode,
   type Node, type Edge, type Connection, MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
-import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search } from "lucide-react";
+import { Trash2, Save, Download, Check, Wand2, ExternalLink, X, Plus, Search, Maximize, Minimize } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type DiagramData, type DNode, type DEdge, type DLink,
@@ -24,6 +24,9 @@ import { Button, inputClass } from "../ui";
 import { Select } from "../select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+
+// Shared toolbar button style — uniform height/padding for a symmetric toolbar.
+const TOOLBTN = "inline-flex items-center gap-1 h-8 rounded-lg border border-border px-2.5 text-xs text-muted hover:text-foreground hover:bg-surface-2 transition-colors";
 
 /* ── serialization helpers ──────────────────────────────────────────────── */
 
@@ -122,6 +125,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const [saved, setSaved] = useState(false);
   const [linkType, setLinkType] = useState("knowledge");
   const [layoutDir, setLayoutDir] = useState<LayoutDir>("LR");
+  const [full, setFull] = useState(false);
   const [targets, setTargets] = useState<LinkTargets>({});
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const idRef = useRef(initial.nodes.length + initial.edges.length + 1);
@@ -231,7 +235,15 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   const exportPng = async () => {
     const vp = wrapRef.current?.querySelector(".react-flow__viewport") as HTMLElement | null;
     if (!vp) return;
-    const url = await toPng(vp, { backgroundColor: getComputedStyle(document.body).backgroundColor || "#0b0f17", cacheBust: true, pixelRatio: 2 }).catch(() => null);
+    // Keep editor-only chrome (connection dots, controls, minimap, resize
+    // handles, panels) out of the exported image.
+    const SKIP = ["react-flow__handle", "react-flow__controls", "react-flow__minimap", "react-flow__panel", "react-flow__attribution", "react-flow__resize-control"];
+    const url = await toPng(vp, {
+      backgroundColor: getComputedStyle(document.body).backgroundColor || "#0b0f17",
+      cacheBust: true,
+      pixelRatio: 2,
+      filter: (el) => !(el instanceof Element) || !SKIP.some((c) => el.classList?.contains(c)),
+    }).catch(() => null);
     if (!url) return;
     const a = document.createElement("a");
     a.href = url; a.download = `${title.replace(/\s+/g, "-").toLowerCase() || "diagram"}.png`; a.click();
@@ -244,23 +256,26 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] min-h-[460px] rounded-xl border border-border bg-surface overflow-hidden">
+    <div className={`flex flex-col border border-border bg-surface overflow-hidden ${full ? "fixed inset-0 z-[60] rounded-none" : "h-[calc(100vh-5.5rem)] min-h-[460px] rounded-xl"}`}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} max-w-xs`} placeholder="Diagram title" />
         <PalettePopover onAdd={addNode} />
-        <button onClick={() => tidy()} title="Auto-layout" className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-foreground hover:bg-surface-2">
+        <button onClick={() => tidy()} title="Auto-layout" className={TOOLBTN}>
           <Wand2 size={13} /> Tidy
         </button>
         <DirControl value={layoutDir} onChange={(d) => tidy(d)} />
         <div className="flex-1" />
-        <button onClick={exportJson} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-muted hover:text-foreground hover:bg-surface-2">
+        <button onClick={exportJson} title="Export JSON" className={TOOLBTN}>
           <Download size={13} /> JSON
         </button>
-        <button onClick={exportPng} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs text-muted hover:text-foreground hover:bg-surface-2">
+        <button onClick={exportPng} title="Export PNG" className={TOOLBTN}>
           <Download size={13} /> PNG
         </button>
-        <Button onClick={save} disabled={saving}>
+        <button onClick={() => { setFull((f) => !f); setTimeout(() => fitView({ duration: 200 }), 80); }} title={full ? "Exit full screen" : "Full screen"} className={`${TOOLBTN} !px-2`}>
+          {full ? <Minimize size={14} /> : <Maximize size={14} />}
+        </button>
+        <Button onClick={save} disabled={saving} className="h-8">
           {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> {saving ? "Saving…" : "Save"}</>}
         </Button>
       </div>
@@ -272,6 +287,7 @@ function Editor({ projectId, diagramId, initial }: { projectId: string; diagramI
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -448,8 +464,8 @@ function PalettePopover({ onAdd }: { onAdd: (type: string) => void }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-2 text-xs font-medium text-white hover:bg-blue-500">
-        <Plus size={13} /> Add node
+      <button onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-1 h-8 rounded-lg bg-blue-600 px-2.5 text-xs font-medium text-white hover:bg-blue-500">
+        <Plus size={13} /> Insert
       </button>
       {open && (
         <div className="absolute z-30 mt-1 left-0 w-[330px] max-h-[440px] flex flex-col rounded-xl border border-border bg-surface shadow-2xl">
@@ -487,12 +503,12 @@ const DIRS: { value: LayoutDir; label: string }[] = [
 
 function DirControl({ value, onChange }: { value: LayoutDir; onChange: (d: LayoutDir) => void }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-border overflow-hidden" title="Layout direction">
+    <div className="inline-flex items-center h-8 rounded-lg border border-border overflow-hidden" title="Layout direction">
       {DIRS.map((d) => (
         <button
           key={d.value}
           onClick={() => onChange(d.value)}
-          className={`px-2 py-1.5 text-xs leading-none transition-colors ${value === d.value ? "bg-blue-600/10 text-blue-500 font-semibold" : "text-muted hover:text-foreground hover:bg-surface-2"}`}
+          className={`h-full w-7 grid place-items-center text-xs transition-colors ${value === d.value ? "bg-blue-600/10 text-blue-500 font-semibold" : "text-muted hover:text-foreground hover:bg-surface-2"}`}
         >
           {d.label}
         </button>

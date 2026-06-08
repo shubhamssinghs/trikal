@@ -29,12 +29,19 @@ function LinkBadge({ link }: { link?: DLink }) {
 
 const HSTYLE = { width: 9, height: 9 };
 
-/** Left target + right source — keeps connections directional and unambiguous. */
-function LR({ color }: { color: string }) {
+/**
+ * Handles on all four sides. With ConnectionMode.Loose (set on the canvas)
+ * every handle works as both source and target, so links can enter/leave from
+ * the top, bottom, left or right — needed for top-to-bottom layouts.
+ */
+function Handles({ color }: { color: string }) {
+  const s = { ...HSTYLE, background: color };
   return (
     <>
-      <Handle type="target" position={Position.Left} style={{ ...HSTYLE, background: color }} />
-      <Handle type="source" position={Position.Right} style={{ ...HSTYLE, background: color }} />
+      <Handle id="t" type="source" position={Position.Top} style={s} />
+      <Handle id="r" type="source" position={Position.Right} style={s} />
+      <Handle id="b" type="source" position={Position.Bottom} style={s} />
+      <Handle id="l" type="source" position={Position.Left} style={s} />
     </>
   );
 }
@@ -49,7 +56,7 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
       style={{ borderColor: selected ? accent : "rgb(var(--border))", boxShadow: selected ? `0 0 0 1px ${accent}` : undefined }}
     >
       <LinkBadge link={data.link} />
-      <LR color={accent} />
+      <Handles color={accent} />
       {svg ? (
         // White chip keeps dark-glyph logos (Next.js, Vercel, Kafka…) visible on any theme.
         <span className="grid place-items-center rounded-md shrink-0 bg-white border border-black/5" style={{ width: 28, height: 28 }}>
@@ -66,19 +73,33 @@ export function ServiceNode({ data, selected }: NodeProps<Node<NodeData>>) {
   );
 }
 
-/** Geometric shape node (rectangle / rounded / circle / diamond / cylinder). */
+const SHAPE_CLIP: Partial<Record<string, string>> = {
+  diamond: "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)",
+  hexagon: "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)",
+  parallelogram: "polygon(18% 0, 100% 0, 82% 100%, 0 100%)",
+  triangle: "polygon(50% 4%, 100% 100%, 0 100%)",
+  note: "polygon(0 0, 82% 0, 100% 26%, 100% 100%, 0 100%)",
+};
+const SHAPE_LABEL_PAD: Partial<Record<string, string>> = {
+  diamond: "0 18%",
+  hexagon: "0 16%",
+  parallelogram: "0 14%",
+  triangle: "32% 8% 0",
+};
+
+/** Geometric shape node (rectangle / rounded / circle / diamond / cylinder / hexagon / parallelogram / triangle / note). */
 export function ShapeNode({ data, selected }: NodeProps<Node<NodeData>>) {
   const kind = shapeKindOf(data.ntype) ?? "rectangle";
   const color = data.color || "#64748b";
   const radius =
     kind === "rounded" ? "0.6rem" : kind === "circle" ? "9999px" : kind === "cylinder" ? "50% / 16px" : "0";
-  const clip = kind === "diamond" ? "polygon(50% 0, 100% 50%, 50% 100%, 0 50%)" : undefined;
+  const clip = SHAPE_CLIP[kind];
 
   return (
     <div className="relative w-full h-full" style={{ minWidth: 90, minHeight: 56 }}>
       <NodeResizer color={color} isVisible={selected} minWidth={90} minHeight={56} keepAspectRatio={kind === "circle"} />
       <LinkBadge link={data.link} />
-      <LR color={color} />
+      <Handles color={color} />
       <div
         className="w-full h-full grid place-items-center text-center px-3"
         style={{
@@ -88,7 +109,7 @@ export function ShapeNode({ data, selected }: NodeProps<Node<NodeData>>) {
           clipPath: clip,
         }}
       >
-        <span className="text-xs font-medium text-foreground leading-tight" style={{ padding: kind === "diamond" ? "0 18%" : undefined }}>
+        <span className="text-xs font-medium text-foreground leading-tight" style={{ padding: SHAPE_LABEL_PAD[kind] }}>
           {data.label}
         </span>
       </div>

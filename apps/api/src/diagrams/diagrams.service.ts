@@ -36,10 +36,20 @@ const isMermaidKind = (k: string): k is (typeof MERMAID_KINDS)[number] =>
 
 // Node types the architecture generator may use (keys from the shared icon registry).
 const ARCH_TYPES = [
-  "generic.user", "generic.mobile", "generic.api", "generic.database",
-  "generic.queue", "generic.lock",
-  "aws.cloudfront", "aws.waf", "aws.ecs", "aws.rds", "aws.s3", "aws.kms", "aws.elasticache", "aws.alb",
+  "generic.user", "generic.mobile", "generic.api", "generic.database", "generic.queue", "generic.lock",
+  // Frontend
+  "tech.react", "tech.nextjs", "tech.vue", "tech.angular", "tech.svelte", "tech.typescript", "tech.javascript", "tech.tailwind", "tech.redux",
+  // Backend & languages
+  "tech.nodejs", "tech.express", "tech.nestjs", "tech.python", "tech.django", "tech.flask", "tech.java", "tech.spring", "tech.go", "tech.rails", "tech.php", "tech.graphql", "tech.dotnet",
+  // Databases & cache
+  "tech.mongodb", "tech.postgresql", "tech.mysql", "tech.redis", "tech.sqlite", "tech.elasticsearch", "tech.firebase", "tech.supabase", "tech.prisma",
+  // DevOps & infra
+  "tech.docker", "tech.kubernetes", "tech.github-actions", "tech.gitlab", "tech.terraform", "tech.nginx", "tech.vercel", "tech.netlify", "tech.cloudflare", "tech.gcp", "tech.kafka", "tech.rabbitmq",
+  // AWS
+  "aws.ec2", "aws.lambda", "aws.ecs", "aws.eks", "aws.fargate", "aws.s3", "aws.rds", "aws.aurora", "aws.dynamodb", "aws.elasticache", "aws.alb", "aws.cloudfront", "aws.route53", "aws.api-gateway", "aws.sqs", "aws.sns", "aws.eventbridge", "aws.iam", "aws.cognito", "aws.kms", "aws.waf", "aws.cloudwatch",
+  // Azure
   "azure.app-service", "azure.sql", "azure.devops",
+  // Tools
   "tools.slack", "tools.jira", "tools.teams", "tools.zoom", "tools.outlook",
 ];
 
