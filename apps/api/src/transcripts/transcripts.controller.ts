@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Param, Query,
+  Controller, Get, Post, Delete, Body, Param, Query,
   UseInterceptors, UploadedFile, BadRequestException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -51,5 +51,10 @@ export class TranscriptsController {
   @Get(":id/download-url")
   getDownloadUrl(@Param("id") id: string) {
     return this.transcriptsService.getDownloadUrl(id, DEV_ORG_ID);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.transcriptsService.remove(id, DEV_ORG_ID);
   }
 }

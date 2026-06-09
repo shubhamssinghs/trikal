@@ -92,4 +92,11 @@ export class TranscriptsService {
     const url = await this.storage.getPresignedUrl(t.storageKey);
     return { url };
   }
+
+  /** Remove a transcript from the knowledge base (cascades its knowledge items + chunks). */
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
+    await this.prisma.meetingTranscript.delete({ where: { id } });
+    return { ok: true };
+  }
 }

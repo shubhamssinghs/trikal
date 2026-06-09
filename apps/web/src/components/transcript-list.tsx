@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, CheckCircle2, Clock, X, ExternalLink, Users, CalendarClock, Loader2 } from "lucide-react";
+import { FileText, CheckCircle2, Clock, X, ExternalLink, Users, CalendarClock, Loader2, Trash2 } from "lucide-react";
 import { EmptyState } from "./ui";
 import { Markdown } from "./markdown";
 import { formatDate } from "@/lib/format";
@@ -26,6 +26,7 @@ function SourceBadge({ source }: { source?: string }) {
 }
 
 export function TranscriptList({ transcripts }: { transcripts: Item[] }) {
+  const [items, setItems] = useState(transcripts);
   const [open, setOpen] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,17 +37,22 @@ export function TranscriptList({ transcripts }: { transcripts: Item[] }) {
     if (d) setOpen(d); else setOpen(null);
   };
 
-  if (transcripts.length === 0) {
+  const remove = async (id: string) => {
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    if (open?.id === id) setOpen(null);
+    await fetch(`${API_BASE}/transcripts/${id}`, { credentials: "include", method: "DELETE" }).catch(() => {});
+  };
+
+  if (items.length === 0) {
     return <EmptyState icon={<FileText size={28} />} title="No transcripts yet" description="Upload a transcript above, or enable Granola on this project to sync meetings automatically." />;
   }
 
   return (
     <>
       <div className="space-y-2">
-        {transcripts.map((t) => (
-          <button key={t.id} onClick={() => openDetail(t.id)}
-            className="w-full text-left flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-4 py-3 hover:bg-surface-2/70 transition-colors">
-            <div className="flex items-center gap-3 min-w-0">
+        {items.map((t) => (
+          <div key={t.id} className="group flex items-center gap-2 rounded-lg border border-border bg-surface-2/40 px-4 py-3 hover:bg-surface-2/70 transition-colors">
+            <button onClick={() => openDetail(t.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
               <div className="grid place-items-center w-9 h-9 rounded-lg bg-surface-2 text-muted shrink-0"><FileText size={16} /></div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
@@ -56,20 +62,21 @@ export function TranscriptList({ transcripts }: { transcripts: Item[] }) {
                   {t.metadata?.attendees?.length ? <span>· {t.metadata.attendees.length} attendees</span> : null}
                 </p>
               </div>
-            </div>
+            </button>
             <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ring-1 ring-inset shrink-0 ${t.processedAt ? "bg-emerald-500/15 text-emerald-500 ring-emerald-500/30" : "bg-surface-2 text-muted ring-border"}`}>
               {t.processedAt ? <CheckCircle2 size={12} /> : <Clock size={12} />}{t.processedAt ? "Analysed" : "Pending"}
             </span>
-          </button>
+            <button onClick={() => remove(t.id)} title="Delete from knowledge base" className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+          </div>
         ))}
       </div>
 
-      {open && <DetailModal detail={open} loading={loading} onClose={() => setOpen(null)} />}
+      {open && <DetailModal detail={open} loading={loading} onClose={() => setOpen(null)} onDelete={() => remove(open.id)} />}
     </>
   );
 }
 
-function DetailModal({ detail, loading, onClose }: { detail: Detail; loading: boolean; onClose: () => void }) {
+function DetailModal({ detail, loading, onClose, onDelete }: { detail: Detail; loading: boolean; onClose: () => void; onDelete: () => void }) {
   const m = detail.metadata ?? {};
   // rawContent is "# title\nheader…\n\n## AI Notes\n…\n\n## Transcript\n…"
   const aiNotes = detail.rawContent?.split("## AI Notes")[1]?.split("## Transcript")[0]?.trim();
@@ -89,7 +96,10 @@ function DetailModal({ detail, loading, onClose }: { detail: Detail; loading: bo
               {m.webUrl && <a href={m.webUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 inline-flex items-center gap-1"><ExternalLink size={11} /> Open in Granola</a>}
             </div>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-foreground shrink-0"><X size={16} /></button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={onDelete} title="Delete from knowledge base" className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10"><Trash2 size={14} /></button>
+            <button onClick={onClose} className="text-muted hover:text-foreground"><X size={16} /></button>
+          </div>
         </div>
 
         <div className="overflow-y-auto px-5 py-4 space-y-4">
