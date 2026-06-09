@@ -151,10 +151,10 @@ function Turn({ run, projectId }: { run: Run; projectId: string }) {
     <div className="space-y-3">
       <UserBubble text={run.goal} />
       <div className="flex justify-start">
-        <div className="max-w-[90%] w-full space-y-2">
+        <div className="max-w-[90%] space-y-2">
           {traceSteps.length > 0 && <Trace steps={traceSteps} />}
           {run.answer && (
-            <div className="rounded-2xl rounded-bl-md border border-border bg-surface-2/40 px-3.5 py-2.5 text-sm text-foreground">
+            <div className="inline-block rounded-2xl rounded-bl-md border border-border bg-surface-2/40 px-3.5 py-2 text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
               <Markdown>{run.answer}</Markdown>
             </div>
           )}
