@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, CheckCircle2, Workflow } from "lucide-react";
+import { Library, CheckCircle2, Workflow, Settings } from "lucide-react";
 import { queries } from "@/lib/api/queries";
 import { formatDate } from "@/lib/format";
 import { Shell } from "@/components/shell";
@@ -9,7 +9,6 @@ import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { MembersPanel } from "@/components/members-panel";
-import { ProjectIntegrations } from "@/components/project-integrations";
 import { ProjectActions } from "@/components/project-actions";
 import { serverFetch } from "@/lib/api/server";
 
@@ -63,6 +62,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             <Link href={`/projects/${id}/diagrams`}>
               <Button variant="secondary"><Workflow size={14} /> Diagrams</Button>
             </Link>
+            <Link href={`/projects/${id}/settings`}>
+              <Button variant="secondary"><Settings size={14} /> Settings</Button>
+            </Link>
             <ProjectActions project={project} />
           </>
         }
@@ -108,8 +110,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         {/* Sidebar */}
         <aside className="space-y-5">
           <MembersPanel projectId={id} members={members as never} />
-
-          <ProjectIntegrations projectId={id} />
 
           <Card title="Project Info">
             <dl className="space-y-2.5">
