@@ -8,7 +8,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v
 interface Props { projectId: string }
 
 type Mode = "text" | "file";
-type Status = "idle" | "uploading" | "ingesting" | "analysing" | "done" | "error";
+type Status = "idle" | "uploading" | "analysing" | "done" | "error";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function TranscriptUpload({ projectId }: Props) {
   const router = useRouter();
@@ -18,14 +20,12 @@ export function TranscriptUpload({ projectId }: Props) {
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [result, setResult] = useState<{ recommendations?: number } | null>(null);
 
-  const reset = () => { setStatus("idle"); setResult(null); };
+  const reset = () => { setStatus("idle"); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("uploading");
-    setResult(null);
 
     try {
       let transcriptId: string;
@@ -53,16 +53,20 @@ export function TranscriptUpload({ projectId }: Props) {
         transcriptId = t.id;
       }
 
-      setStatus("ingesting");
-      await fetch(`${API_BASE}/knowledge/ingest/transcript/${transcriptId}`, { credentials: "include", method: "POST" });
-
+      // The server auto-processes (ingest → analyse → recommendations → briefing).
+      // Clear the form and poll until the transcript is marked processed.
       setStatus("analysing");
-      const analysis = await fetch(`${API_BASE}/ai/analyze/transcript/${transcriptId}`, { credentials: "include", method: "POST" }).then((r) => r.json());
-
-      setStatus("done");
-      setResult({ recommendations: analysis.recommendationsCreated });
       setTitle(""); setContent(""); setFile(null);
       if (fileRef.current) fileRef.current.value = "";
+
+      for (let i = 0; i < 30; i++) {
+        await sleep(2000);
+        const t = await fetch(`${API_BASE}/transcripts/${transcriptId}`, { credentials: "include" })
+          .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        if (t?.processedAt) break;
+      }
+
+      setStatus("done");
       router.refresh();
     } catch {
       setStatus("error");
@@ -72,9 +76,8 @@ export function TranscriptUpload({ projectId }: Props) {
   const statusLabel: Record<Status, string | null> = {
     idle: null,
     uploading: "Uploading...",
-    ingesting: "Building knowledge base...",
-    analysing: "Running AI analysis...",
-    done: `Done — ${result?.recommendations ?? 0} recommendations created`,
+    analysing: "Analysing in the background — extracting actions, risks & recommendations...",
+    done: "Done — recommendations and briefing updated below",
     error: "Something went wrong. Try again.",
   };
 

@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
-import { KnowledgeService } from "../knowledge/knowledge.service";
 import { BriefingService } from "../briefing/briefing.service";
+import { ProcessingService } from "../processing/processing.service";
 import { Prisma } from "@prisma/client";
 import { GranolaClient, noteMatchesScope, buildNoteContent, buildNoteMetadata, noteOccurredAt, type GranolaScope } from "./granola.client";
 
@@ -15,7 +15,7 @@ export class IntegrationSyncService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly knowledge: KnowledgeService,
+    private readonly processing: ProcessingService,
     private readonly briefing: BriefingService,
   ) {}
 
@@ -102,9 +102,11 @@ export class IntegrationSyncService implements OnModuleInit {
             metadata: buildNoteMetadata(note) as unknown as Prisma.InputJsonValue,
           },
         });
-        await this.knowledge.ingestTranscript(transcript.id, organizationId).catch((e) =>
-          this.logger.warn(`Ingest ${transcript.id} failed: ${e instanceof Error ? e.message : e}`),
-        );
+        // Ingest + AI analysis (recommendations/risks). Briefing is refreshed
+        // once after the batch below, so suppress the per-note refresh here.
+        await this.processing
+          .process(transcript.id, organizationId, { refreshBriefing: false })
+          .catch((e) => this.logger.warn(`Process ${transcript.id} failed: ${e instanceof Error ? e.message : e}`));
         ingested++;
         await sleep(220); // rate-limit friendly
       }

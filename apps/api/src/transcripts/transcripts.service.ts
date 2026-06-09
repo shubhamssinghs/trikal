@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaClient, DataClassification } from "@prisma/client";
 import { StorageService } from "../storage/storage.service";
+import { ProcessingService } from "../processing/processing.service";
 import { CreateTranscriptDto } from "./dto/create-transcript.dto";
 
 @Injectable()
@@ -8,6 +9,7 @@ export class TranscriptsService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly storage: StorageService,
+    private readonly processing: ProcessingService,
   ) {}
 
   async create(dto: CreateTranscriptDto, organizationId: string) {
@@ -16,7 +18,7 @@ export class TranscriptsService {
     });
     if (!project) throw new NotFoundException("Project not found");
 
-    return this.prisma.meetingTranscript.create({
+    const transcript = await this.prisma.meetingTranscript.create({
       data: {
         projectId: dto.projectId,
         title: dto.title,
@@ -25,6 +27,9 @@ export class TranscriptsService {
         classification: (dto.classification as DataClassification) ?? DataClassification.INTERNAL,
       },
     });
+    // Auto-process in the background: ingest → analyse → recommendations → briefing.
+    void this.processing.process(transcript.id, organizationId);
+    return transcript;
   }
 
   async createFromFile(
@@ -43,7 +48,7 @@ export class TranscriptsService {
     const storageKey = `transcripts/${data.projectId}/${Date.now()}-${data.file.originalname}`;
     await this.storage.uploadFile(storageKey, data.file.buffer, data.file.mimetype);
 
-    return this.prisma.meetingTranscript.create({
+    const transcript = await this.prisma.meetingTranscript.create({
       data: {
         projectId: data.projectId,
         title: data.title,
@@ -53,6 +58,9 @@ export class TranscriptsService {
         classification: DataClassification.INTERNAL,
       },
     });
+    // Auto-process in the background: ingest → analyse → recommendations → briefing.
+    void this.processing.process(transcript.id, organizationId);
+    return transcript;
   }
 
   private extractText(file: Express.Multer.File): string {
