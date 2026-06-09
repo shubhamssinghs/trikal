@@ -100,7 +100,8 @@ export class AgentRuntimeService {
     const artifacts: unknown[] = [];
 
     // Execute one tool call (shared by both providers): approval gate → handler.
-    const executeTool = async (slug: string, input: Record<string, unknown>): Promise<string> => {
+    // Returns text for the model + an optional artifact (surfaced in the chat).
+    const executeTool = async (slug: string, input: Record<string, unknown>): Promise<{ text: string; artifact?: unknown }> => {
       const skill = bySlug.get(slug);
       if (skill?.externalAction) {
         if (projectId) {
@@ -114,16 +115,16 @@ export class AgentRuntimeService {
             },
           }).catch(() => {});
         }
-        return `Queued "${skill.name}" for human approval — it will run after approval.`;
+        return { text: `Queued "${skill.name}" for human approval — it will run after approval.` };
       }
       const handler = HANDLERS[skill?.handlerKey ?? ""];
-      if (!handler) return `Skill "${slug}" has no executable handler; treat its instructions as guidance only.`;
+      if (!handler) return { text: `Skill "${slug}" has no executable handler; treat its instructions as guidance only.` };
       try {
         const out = await handler(input, ctx);
         if (out.artifact) artifacts.push(out.artifact);
-        return out.text;
+        return { text: out.text, artifact: out.artifact };
       } catch (e) {
-        return `Skill "${slug}" failed: ${e instanceof Error ? e.message : String(e)}`;
+        return { text: `Skill "${slug}" failed: ${e instanceof Error ? e.message : String(e)}` };
       }
     };
 
@@ -186,9 +187,9 @@ export class AgentRuntimeService {
         if (block.type !== "tool_use") continue;
         const input = (block.input ?? {}) as Record<string, unknown>;
         await p.step("tool_call", { skillSlug: block.name, title: p.bySlug.get(block.name)?.name ?? block.name, content: { input } });
-        const text = await p.executeTool(block.name, input);
-        await p.step("tool_result", { skillSlug: block.name, content: { text } });
-        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: text });
+        const r = await p.executeTool(block.name, input);
+        await p.step("tool_result", { skillSlug: block.name, content: { text: r.text, artifact: r.artifact } });
+        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: r.text });
       }
       messages.push({ role: "user", content: toolResults });
     }
@@ -228,9 +229,9 @@ export class AgentRuntimeService {
         let input: Record<string, unknown> = {};
         try { input = JSON.parse(tc.function.arguments || "{}"); } catch { /* keep {} */ }
         await p.step("tool_call", { skillSlug: tc.function.name, title: p.bySlug.get(tc.function.name)?.name ?? tc.function.name, content: { input } });
-        const text = await p.executeTool(tc.function.name, input);
-        await p.step("tool_result", { skillSlug: tc.function.name, content: { text } });
-        messages.push({ role: "tool", tool_call_id: tc.id, content: text });
+        const r = await p.executeTool(tc.function.name, input);
+        await p.step("tool_result", { skillSlug: tc.function.name, content: { text: r.text, artifact: r.artifact } });
+        messages.push({ role: "tool", tool_call_id: tc.id, content: r.text });
       }
     }
     return { answer, tokensIn, tokensOut };
@@ -316,5 +317,5 @@ interface LoopParams {
   skills: Skill[];
   bySlug: Map<string, Skill>;
   step: StepFn;
-  executeTool: (slug: string, input: Record<string, unknown>) => Promise<string>;
+  executeTool: (slug: string, input: Record<string, unknown>) => Promise<{ text: string; artifact?: unknown }>;
 }
