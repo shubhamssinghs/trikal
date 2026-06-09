@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FileText, CheckCircle2, Clock, X, ExternalLink, Users, CalendarClock, Loader2 } from "lucide-react";
 import { EmptyState } from "./ui";
+import { Markdown } from "./markdown";
 import { formatDate } from "@/lib/format";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
@@ -109,7 +110,7 @@ function DetailModal({ detail, loading, onClose }: { detail: Detail; loading: bo
               {aiNotes && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">AI Notes</p>
-                  <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed rounded-lg border border-border bg-surface-2/30 p-3">{aiNotes}</pre>
+                  <div className="rounded-lg border border-border bg-surface-2/30 p-3"><Markdown>{aiNotes}</Markdown></div>
                 </div>
               )}
               {transcript && (
