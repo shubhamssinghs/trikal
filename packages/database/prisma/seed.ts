@@ -101,6 +101,15 @@ async function main() {
       inputSchema: { type: "object", properties: { kind: { type: "string", enum: ["architecture", "flow", "sequence", "state", "gantt"], description: "Diagram type" }, prompt: { type: "string", description: "What the diagram should depict" } }, required: ["kind"], additionalProperties: false },
     },
     {
+      slug: "draft_document",
+      name: "Document drafter",
+      description: "Draft a document (spec, summary, proposal, report, handover, meeting recap, PRD) from the project's knowledge base or the current conversation. Produces a draft the user approves before it's saved to the knowledge base.",
+      handlerKey: "document.draft",
+      kind: "action",
+      instructions: "When asked to write/prepare a document: first search the project knowledge base for relevant context, then write a clean, well-structured document in Markdown (title with #, sections with ##, bullets, short paragraphs) grounded only in that context. Pass the full markdown as contentMarkdown along with a title. If the user asks to revise an existing draft, call this again with the same documentId so it rewrites that document instead of creating a new one.",
+      inputSchema: { type: "object", properties: { title: { type: "string" }, contentMarkdown: { type: "string", description: "The full document body in Markdown" }, documentId: { type: "string", description: "Set when revising an existing draft" } }, required: ["title", "contentMarkdown"], additionalProperties: false },
+    },
+    {
       slug: "generate_skill",
       name: "Skill generator",
       description: "Author a new reusable skill from a specification: a name, description, when-to-use instructions, and which existing skills it composes. The new skill is created disabled for human review in Settings → Skills.",

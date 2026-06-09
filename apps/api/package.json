@@ -21,6 +21,7 @@
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.4.22",
     "@prisma/client": "^5.14.0",
+    "docx": "^9.0.2",
     "@trikal/database": "workspace:*",
     "@trikal/shared": "workspace:*",
     "@trishuliam/oauth-client": "^0.1.2",

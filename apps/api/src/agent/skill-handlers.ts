@@ -54,6 +54,38 @@ export const HANDLERS: Record<string, SkillHandler> = {
     };
   },
 
+  // Draft a project document (markdown) → saved as a draft awaiting approval.
+  // Iterates the same document when a documentId is supplied.
+  "document.draft": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context — documents are drafted within a project." };
+    const title = String(input.title ?? "Untitled document").slice(0, 200);
+    const content = String(input.contentMarkdown ?? input.content ?? "").trim();
+    if (!content) return { text: "No document content was provided to save." };
+    const documentId = typeof input.documentId === "string" ? input.documentId : null;
+
+    let doc = documentId
+      ? await ctx.prisma.projectDocument.findFirst({ where: { id: documentId, projectId: ctx.projectId } })
+      : null;
+
+    if (doc) {
+      // Iteration: snapshot the old version, then overwrite (back to draft).
+      await ctx.prisma.documentVersion.create({ data: { documentId: doc.id, version: doc.version, content: doc.content } });
+      doc = await ctx.prisma.projectDocument.update({
+        where: { id: doc.id },
+        data: { title, content, version: doc.version + 1, status: "draft", approvedAt: null },
+      });
+    } else {
+      doc = await ctx.prisma.projectDocument.create({
+        data: { projectId: ctx.projectId, organizationId: ctx.organizationId, title, content, status: "draft" },
+      });
+    }
+
+    return {
+      text: `Drafted document "${doc.title}" (id: ${doc.id}, v${doc.version}). It's a draft awaiting your approval — approving adds it to the knowledge base. To revise it, call draft_document again with documentId "${doc.id}".`,
+      artifact: { type: "document", id: doc.id, label: doc.title },
+    };
+  },
+
   // Skill-generator primitive: author a new composite/prompt skill (disabled until reviewed).
   "skill.create": async (input, ctx) => {
     const slug = String(input.slug ?? "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");

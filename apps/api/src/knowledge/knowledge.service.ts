@@ -83,6 +83,31 @@ export class KnowledgeService {
     };
   }
 
+  /** Ingest arbitrary text (e.g. an approved document) into the knowledge base. */
+  async ingestContent(opts: { projectId: string; title: string; content: string; sourceType: string; organizationId: string }) {
+    const item = await this.prisma.knowledgeItem.create({
+      data: { projectId: opts.projectId, sourceType: opts.sourceType, title: opts.title, content: opts.content },
+    });
+    const chunks = this.chunking.chunk(opts.content);
+    let embeddings: number[][] = [];
+    if (await this.embedding.isEnabled(opts.organizationId)) {
+      try { embeddings = await this.embedding.embedTexts(chunks, opts.organizationId); }
+      catch (err: unknown) { console.warn(`Embedding failed (${(err instanceof Error ? err.message : String(err)).slice(0, 80)}), storing without vectors`); }
+    }
+    for (let i = 0; i < chunks.length; i++) {
+      const vec = embeddings[i];
+      if (vec && vec.length > 0) {
+        await this.prisma.$executeRaw`
+          INSERT INTO "knowledge_chunks" ("id", "knowledgeItemId", "content", "chunkIndex", "embedding", "createdAt")
+          VALUES (${`chunk_${item.id}_${i}`}, ${item.id}, ${chunks[i]}, ${i}, ${`[${vec.join(",")}]`}::vector, NOW())
+        `;
+      } else {
+        await this.prisma.knowledgeChunk.create({ data: { knowledgeItemId: item.id, content: chunks[i], chunkIndex: i } });
+      }
+    }
+    return { itemId: item.id, chunkCount: chunks.length };
+  }
+
   async searchProject(projectId: string, query: string, organizationId: string) {
     const project = await this.prisma.project.findFirst({ where: { id: projectId, organizationId } });
     if (!project) throw new NotFoundException("Project not found");

@@ -149,6 +149,7 @@ model Project {
   conversations Conversation[]
   integrations  ProjectIntegration[]
   briefing      ProjectBriefing?
+  documents     ProjectDocument[]
 
   @@map("projects")
 }
@@ -314,6 +315,39 @@ model ProjectBriefing {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_briefings")
+}
+
+/// AI-drafted project document (markdown). Draft → approve (ingests into KB) → iterate.
+model ProjectDocument {
+  id              String   @id @default(cuid())
+  projectId       String
+  organizationId  String
+  title           String
+  content         String   // markdown
+  status          String   @default("draft") // draft | approved
+  version         Int      @default(1)
+  knowledgeItemId String?  // set once ingested into the knowledge base
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  approvedAt      DateTime?
+
+  project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions DocumentVersion[]
+
+  @@index([projectId])
+  @@map("project_documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    Int
+  content    String
+  createdAt  DateTime @default(now())
+
+  document ProjectDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_versions")
 }
 
 // ─── Integrations (connectors) ─────────────────────────────────────────────

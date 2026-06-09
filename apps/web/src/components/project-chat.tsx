@@ -171,6 +171,14 @@ function Turn({ run, projectId }: { run: Run; projectId: string }) {
 }
 
 function ArtifactCard({ artifact, projectId }: { artifact: Artifact; projectId: string }) {
+  // Documents live in the project's Documents panel (no standalone route) — show an info chip.
+  if (artifact.type === "document") {
+    return (
+      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+        <Sparkles size={13} /> Drafted “{artifact.label || "document"}” — review &amp; approve in <span className="font-medium">Documents</span>.
+      </div>
+    );
+  }
   const href = artifact.href || (artifact.type === "diagram" && artifact.id ? `/projects/${projectId}/diagrams/${artifact.id}` : null);
   if (!href) return null;
   return (

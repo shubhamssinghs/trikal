@@ -7,6 +7,7 @@ import { PageHeader, Card, StatusBadge, Button } from "@/components/ui";
 import { ApprovalQueue } from "@/components/approval-queue";
 import { ProjectBriefing } from "@/components/project-briefing";
 import { ProjectAssistant } from "@/components/project-assistant";
+import { ProjectDocuments } from "@/components/project-documents";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { MembersPanel } from "@/components/members-panel";
@@ -111,6 +112,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
         {/* Sidebar */}
         <aside className="space-y-5">
+          <ProjectDocuments projectId={id} />
           <MembersPanel projectId={id} members={members as never} />
 
           <Card title="Project Info">
