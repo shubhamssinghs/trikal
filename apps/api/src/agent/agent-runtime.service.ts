@@ -171,10 +171,25 @@ export class AgentRuntimeService {
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       this.logger.error(`Agent run ${run.id} failed: ${err}`);
-      await this.step(run.id, idx++, "error", { content: { error: err } });
+      const friendly = this.friendlyError(err);
+      await this.step(run.id, idx++, "error", { title: friendly ? "Provider error" : undefined, content: { error: friendly ?? err } });
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed", error: err, tokensIn, tokensOut } });
-      return { runId: run.id, answer: answer || "The agent run failed. Check the run trace for details.", status: "failed" as const };
+      return { runId: run.id, answer: answer || friendly || "The agent run failed. Check the run trace for details.", status: "failed" as const };
     }
+  }
+
+  /** Map known provider errors to an actionable message for the dashboard. */
+  private friendlyError(err: string): string | null {
+    const m = err.toLowerCase();
+    if (m.includes("credit balance") || m.includes("insufficient") || m.includes("quota") || m.includes("billing"))
+      return "Anthropic API: your credit balance is too low. Add credits in the Anthropic Console (Plans & Billing), then try again.";
+    if (m.includes("401") || m.includes("authentication") || m.includes("invalid x-api-key") || m.includes("invalid api key"))
+      return "Anthropic API: the API key is invalid. Update it in Settings → AI & Models.";
+    if (m.includes("429") || m.includes("rate"))
+      return "Anthropic API: rate limited. Wait a moment and try again.";
+    if (m.includes("overloaded") || m.includes("529"))
+      return "Anthropic API is temporarily overloaded. Try again shortly.";
+    return null;
   }
 
   listRuns(organizationId: string, projectId?: string) {
