@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2 } from "lucide-react";
 import { Markdown } from "./markdown";
 import { DocumentViewer } from "./document-viewer";
+import { DiagramModal } from "./diagram/diagram-modal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -27,6 +28,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [live, setLive] = useState<{ steps: Step[]; answer: string } | null>(null); // streaming turn
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [openDiagram, setOpenDiagram] = useState<{ id: string; label?: string } | null>(null);
   const [mentionables, setMentionables] = useState<Mentionable[]>([]);
   const [mentions, setMentions] = useState<Mentionable[]>([]);
   const [mq, setMq] = useState<string | null>(null); // active @-query, or null
@@ -171,7 +173,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <>
-            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} onOpenDoc={setOpenDoc} />)}
+            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} onOpenDoc={setOpenDoc} onOpenDiagram={setOpenDiagram} />)}
             {pending && (
               <div className="space-y-3">
                 <UserBubble text={pending} />
@@ -249,6 +251,9 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           onAmend={(title) => setInput(`Revise the document "${title}": `)}
         />
       )}
+      {openDiagram && (
+        <DiagramModal projectId={projectId} diagramId={openDiagram.id} label={openDiagram.label} onClose={() => setOpenDiagram(null)} />
+      )}
     </section>
   );
 }
@@ -261,7 +266,7 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function Turn({ run, projectId, onOpenDoc }: { run: Run; projectId: string; onOpenDoc: (id: string) => void }) {
+function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {
   const artifacts = run.steps.filter((s) => s.type === "tool_result" && s.content?.artifact).map((s) => s.content!.artifact!);
   const traceSteps = run.steps.filter((s) => s.type !== "text");
   return (
@@ -281,7 +286,7 @@ function Turn({ run, projectId, onOpenDoc }: { run: Run; projectId: string; onOp
           {artifacts.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {artifacts.map((a, i) => (
-                <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} />
+                <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} onOpenDiagram={onOpenDiagram} />
               ))}
             </div>
           )}
@@ -291,20 +296,28 @@ function Turn({ run, projectId, onOpenDoc }: { run: Run; projectId: string; onOp
   );
 }
 
-function ArtifactCard({ artifact, projectId, onOpenDoc }: { artifact: Artifact; projectId: string; onOpenDoc: (id: string) => void }) {
+function ArtifactCard({ artifact, projectId, onOpenDoc, onOpenDiagram }: { artifact: Artifact; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {
   // Documents open in a viewer right here (approve / amend / export).
   if (artifact.type === "document" && artifact.id) {
     return (
       <button onClick={() => onOpenDoc(artifact.id!)}
         className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">
-        <FileText size={13} /> Drafted “{artifact.label || "document"}” — open to review &amp; approve <ExternalLink size={12} />
+        <FileText size={13} /> <span className="font-medium">Document:</span> “{artifact.label || "document"}” — open to review &amp; approve <ExternalLink size={12} />
       </button>
     );
   }
-  const href = artifact.href || (artifact.type === "diagram" && artifact.id ? `/projects/${projectId}/diagrams/${artifact.id}` : null);
-  if (!href) return null;
+  // Diagrams open in a preview modal (don't leave the chat).
+  if (artifact.type === "diagram" && artifact.id) {
+    return (
+      <button onClick={() => onOpenDiagram({ id: artifact.id!, label: artifact.label })}
+        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
+        <Sparkles size={13} /> <span className="font-medium">Diagram:</span> {artifact.label || "view"} <ExternalLink size={12} />
+      </button>
+    );
+  }
+  if (!artifact.href) return null;
   return (
-    <Link href={href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
+    <Link href={artifact.href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
       <Sparkles size={13} /> {artifact.label || "Open artifact"} <ExternalLink size={12} />
     </Link>
   );

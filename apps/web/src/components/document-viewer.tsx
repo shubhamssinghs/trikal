@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Check, Download, Trash2, Pencil, Loader2 } from "lucide-react";
 import { Markdown } from "./markdown";
+import { markdownToDocx, downloadBlob } from "@/lib/docx-export";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -20,8 +21,17 @@ export function DocumentViewer({
   onAmend?: (title: string) => void;
 }) {
   const [doc, setDoc] = useState<Doc | null>(null);
-  const [busy, setBusy] = useState<"approve" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"approve" | "delete" | "export" | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const exportDocx = async () => {
+    if (!doc) return;
+    setBusy("export");
+    try {
+      const blob = await markdownToDocx(doc.title, doc.content, projectId);
+      downloadBlob(blob, `${doc.title.replace(/[^\w.-]+/g, "_").slice(0, 60) || "document"}.docx`);
+    } finally { setBusy(null); }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -62,7 +72,7 @@ export function DocumentViewer({
             {onAmend && doc && (
               <button onClick={() => { onAmend(doc.title); onClose(); }} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-surface-2"><Pencil size={12} /> Amend</button>
             )}
-            <a href={`${API_BASE}/projects/${projectId}/documents/${documentId}/export`} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:text-foreground"><Download size={12} /> .docx</a>
+            <button onClick={exportDocx} disabled={!doc || busy === "export"} className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:text-foreground disabled:opacity-50">{busy === "export" ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} .docx</button>
             <button onClick={del} disabled={!!busy} title="Delete" className="p-1.5 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10">{busy === "delete" ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}</button>
             <button onClick={onClose} className="text-muted hover:text-foreground"><X size={16} /></button>
           </div>
