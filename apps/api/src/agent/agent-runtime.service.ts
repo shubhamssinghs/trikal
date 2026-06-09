@@ -87,6 +87,53 @@ export class AgentRuntimeService {
     return parts.length ? `\n\n[Referenced items the user @-mentioned — use these directly]\n${parts.join("\n\n")}` : "";
   }
 
+  /**
+   * A compact, always-fresh snapshot of the project's live state, injected into the
+   * system prompt so the agent can answer "are we on track / what needs attention"
+   * without being spoon-fed. Kept terse so it doesn't blow the context budget.
+   */
+  private async projectStateBlock(projectId: string, organizationId: string): Promise<string> {
+    const project = await this.prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true } });
+    if (!project) return "";
+
+    const now = new Date();
+    const sevRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    const [risks, milestones, members, pendingRecs, recentMeetings] = await Promise.all([
+      this.prisma.risk.findMany({ where: { projectId, status: "open" }, select: { title: true, severity: true } }),
+      this.prisma.milestone.findMany({ where: { projectId, status: { notIn: ["done", "completed"] } }, select: { name: true, dueDate: true } }),
+      this.prisma.member.findMany({ where: { projectId }, select: { name: true, jobRole: { select: { label: true } } }, take: 30 }),
+      this.prisma.recommendation.findMany({ where: { projectId, status: "PENDING" }, select: { title: true }, orderBy: { createdAt: "desc" }, take: 8 }),
+      this.prisma.meetingTranscript.findMany({ where: { projectId }, select: { title: true, occurredAt: true }, orderBy: { occurredAt: "desc" }, take: 3 }),
+    ]);
+
+    const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "no date");
+    const lines: string[] = [];
+
+    if (members.length) {
+      lines.push(`Team (${members.length}): ` + members.map((m) => `${m.name}${m.jobRole?.label ? ` (${m.jobRole.label})` : ""}`).join(", "));
+    }
+    if (risks.length) {
+      risks.sort((a, b) => (sevRank[a.severity] ?? 1) - (sevRank[b.severity] ?? 1));
+      lines.push(`Open risks (${risks.length}): ` + risks.slice(0, 8).map((r) => `[${r.severity}] ${r.title}`).join("; "));
+    }
+    if (milestones.length) {
+      const withDates = [...milestones].sort((a, b) => (a.dueDate?.getTime() ?? Infinity) - (b.dueDate?.getTime() ?? Infinity));
+      lines.push(`Open milestones (${milestones.length}): ` + withDates.slice(0, 8).map((m) => {
+        const overdue = m.dueDate && m.dueDate < now ? " ⚠overdue" : "";
+        return `${m.name} — due ${fmtDate(m.dueDate)}${overdue}`;
+      }).join("; "));
+    }
+    if (pendingRecs.length) {
+      lines.push(`Pending recommendations awaiting approval (${pendingRecs.length}): ` + pendingRecs.map((r) => r.title).join("; "));
+    }
+    if (recentMeetings.length) {
+      lines.push(`Recent meetings: ` + recentMeetings.map((t) => `${t.title} (${fmtDate(t.occurredAt)})`).join("; "));
+    }
+
+    if (!lines.length) return "";
+    return `\nLive project state (current as of now — use this directly; don't ask the user for it):\n- ${lines.join("\n- ")}`;
+  }
+
   async run({ surface, goal, projectId, organizationId, conversationId, mentions, onEvent }: RunInput) {
     const s = await this.settings.resolve(organizationId);
     const provider = s.llmProvider === "openai" ? "openai" : "anthropic";
@@ -140,13 +187,16 @@ export class AgentRuntimeService {
     const project = projectId
       ? await this.prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { name: true, description: true, aiInstructions: true } })
       : null;
+    const stateBlock = projectId ? await this.projectStateBlock(projectId, organizationId) : "";
 
     const system = [
       "You are an AI technical-manager assistant operating inside a project command center.",
       "You have a set of skills (tools). Decide when to call them; you may chain several skills to satisfy a request.",
       "Prefer answering from project knowledge. When a diagram would communicate better than prose, create one.",
       "Be concise and cite which skill/source produced information when relevant.",
+      "You can act on the project: create milestones and risks, update the project's status, and log actions. Use these when the user asks you to — internal changes apply immediately; external sends still require approval.",
       project ? `\nCurrent project: ${project.name}${project.description ? ` — ${project.description}` : ""}` : "",
+      stateBlock,
       project?.aiInstructions ? `\nProject-specific instructions (follow these):\n${project.aiInstructions}` : "",
       conversation?.summary ? `\nEarlier in this conversation (summary):\n${conversation.summary}` : "",
       ...skills.filter((sk) => sk.instructions).map((sk) => `\n[${sk.name}] ${sk.instructions}`),

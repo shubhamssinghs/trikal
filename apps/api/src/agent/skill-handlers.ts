@@ -130,6 +130,87 @@ export const HANDLERS: Record<string, SkillHandler> = {
     return { text };
   },
 
+  // ── Write actions: internal project mutations the agent can perform directly ──
+  // (Internal data only — not external sends — so they apply immediately.)
+
+  // Create a milestone on the project.
+  "milestone.create": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context — milestones belong to a project." };
+    const name = String(input.name ?? input.title ?? "").trim();
+    if (!name) return { text: "A milestone needs a name." };
+    const dueRaw = input.dueDate ? String(input.dueDate) : null;
+    const dueDate = dueRaw && !Number.isNaN(Date.parse(dueRaw)) ? new Date(dueRaw) : null;
+    const m = await ctx.prisma.milestone.create({
+      data: {
+        projectId: ctx.projectId,
+        name: name.slice(0, 200),
+        description: input.description ? String(input.description).slice(0, 1000) : null,
+        dueDate,
+      },
+    });
+    return {
+      text: `Created milestone "${m.name}"${dueDate ? ` due ${dueDate.toISOString().slice(0, 10)}` : ""}. It's now on the project.`,
+      artifact: { type: "milestone", id: m.id, label: m.name },
+    };
+  },
+
+  // Open a risk on the project.
+  "risk.create": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context — risks belong to a project." };
+    const title = String(input.title ?? input.text ?? "").trim();
+    if (!title) return { text: "A risk needs a title." };
+    const sev = String(input.severity ?? "medium").toLowerCase();
+    const severity = ["low", "medium", "high"].includes(sev) ? sev : "medium";
+    const r = await ctx.prisma.risk.create({
+      data: {
+        projectId: ctx.projectId,
+        title: title.slice(0, 200),
+        description: input.description ? String(input.description).slice(0, 1000) : null,
+        severity,
+        mitigationPlan: input.mitigationPlan ? String(input.mitigationPlan).slice(0, 1000) : null,
+      },
+    });
+    return {
+      text: `Opened a ${severity} risk: "${r.title}". It's now tracked on the project.`,
+      artifact: { type: "risk", id: r.id, label: r.title },
+    };
+  },
+
+  // Update the project's status.
+  "project.set_status": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context." };
+    const raw = String(input.status ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+    const allowed = ["ACTIVE", "AT_RISK", "ON_HOLD", "COMPLETED", "ARCHIVED"];
+    if (!allowed.includes(raw)) return { text: `Status must be one of: ${allowed.join(", ")}.` };
+    const p = await ctx.prisma.project.updateMany({
+      where: { id: ctx.projectId, organizationId: ctx.organizationId },
+      data: { status: raw as never },
+    });
+    if (!p.count) return { text: "Project not found." };
+    return { text: `Project status set to ${raw}.` };
+  },
+
+  // Log a tracked action item (recommendation) on the project.
+  "action.log": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context." };
+    const title = String(input.title ?? input.text ?? "").trim();
+    if (!title) return { text: "An action needs a title." };
+    const owner = input.owner ? String(input.owner) : null;
+    const rec = await ctx.prisma.recommendation.create({
+      data: {
+        projectId: ctx.projectId,
+        type: "ACTION_ITEM",
+        title: title.slice(0, 200),
+        description: owner ? `Owner: ${owner}` : (input.description ? String(input.description).slice(0, 1000) : null),
+        payload: { source: "agent", owner } as Prisma.InputJsonValue,
+      },
+    });
+    return {
+      text: `Logged action item "${rec.title}"${owner ? ` (owner: ${owner})` : ""} — it's in the project's action queue.`,
+      artifact: { type: "recommendation", id: rec.id, label: rec.title },
+    };
+  },
+
   // List the project's diagrams so the agent can reference/embed an existing one.
   "diagram.list": async (_input, ctx) => {
     if (!ctx.projectId) return { text: "No project context." };
