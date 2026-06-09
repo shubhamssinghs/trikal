@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Check, Download, Trash2, Pencil, Loader2 } from "lucide-react";
 import { Markdown } from "./markdown";
-import { markdownToDocx, downloadBlob } from "@/lib/docx-export";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -28,6 +27,7 @@ export function DocumentViewer({
     if (!doc) return;
     setBusy("export");
     try {
+      const { markdownToDocx, downloadBlob } = await import("@/lib/docx-export");
       const blob = await markdownToDocx(doc.title, doc.content, projectId);
       downloadBlob(blob, `${doc.title.replace(/[^\w.-]+/g, "_").slice(0, 60) || "document"}.docx`);
     } finally { setBusy(null); }

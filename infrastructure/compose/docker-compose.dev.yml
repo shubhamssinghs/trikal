@@ -8,6 +8,9 @@ services:
       context: ../..
       dockerfile: infrastructure/docker/Dockerfile.web.dev
     restart: unless-stopped
+    # Turbopack dev (10-100x faster route compiles than webpack). Overrides the
+    # image-baked dev script without a rebuild; package.json dev script matches.
+    command: ["pnpm", "--filter", "@trikal/web", "exec", "next", "dev", "--turbopack", "--port", "3100"]
     ports:
       - "3100:3100"
     environment:
