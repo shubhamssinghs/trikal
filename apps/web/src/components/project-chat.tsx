@@ -191,14 +191,23 @@ function Trace({ steps }: { steps: Step[] }) {
       </button>
       {open && (
         <div className="px-3 pb-2 space-y-1.5 border-t border-border pt-2">
-          {steps.map((s) => (
-            <div key={s.id} className="text-[11px]">
-              {s.type === "thinking" && <p className="text-muted italic whitespace-pre-wrap">{s.content?.text}</p>}
-              {s.type === "tool_call" && <p className="text-foreground inline-flex items-center gap-1"><Wrench size={11} className="text-amber-400" /> {s.title || s.skillSlug}<code className="ml-1 text-muted">{JSON.stringify(s.content?.input)}</code></p>}
-              {s.type === "tool_result" && <p className="text-muted pl-4">↳ {s.content?.text}</p>}
-              {s.type === "error" && <p className="text-red-500">⚠ {s.content?.error}</p>}
-            </div>
-          ))}
+          {steps.map((s) => {
+            const input = s.content?.input ? JSON.stringify(s.content.input) : "";
+            return (
+              <div key={s.id} className="text-[11px]">
+                {s.type === "thinking" && <p className="text-muted italic whitespace-pre-wrap line-clamp-4">{s.content?.text}</p>}
+                {s.type === "tool_call" && (
+                  <p className="text-foreground flex items-start gap-1">
+                    <Wrench size={11} className="text-amber-400 mt-0.5 shrink-0" />
+                    <span className="font-medium">{s.title || s.skillSlug}</span>
+                    {input && <code className="text-muted truncate">{input.length > 80 ? input.slice(0, 80) + "…" : input}</code>}
+                  </p>
+                )}
+                {s.type === "tool_result" && <p className="text-muted pl-4 line-clamp-2">↳ {s.content?.text}</p>}
+                {s.type === "error" && <p className="text-red-500 line-clamp-3">⚠ {s.content?.error}</p>}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
