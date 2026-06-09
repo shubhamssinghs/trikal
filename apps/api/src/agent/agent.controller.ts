@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, NotFoundException } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res, NotFoundException } from "@nestjs/common";
+import { Response } from "express";
 import { AgentRuntimeService } from "./agent-runtime.service";
 
 const DEV_ORG_ID = "org_dev";
@@ -16,6 +17,29 @@ export class AgentController {
     @Body("mentions") mentions?: { type: string; id: string }[],
   ) {
     return this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions });
+  }
+
+  /** Streaming ask — emits thinking / tool calls / answer as Server-Sent Events. */
+  @Post("ask/stream")
+  async askStream(
+    @Res() res: Response,
+    @Body("question") question: string,
+    @Body("projectId") projectId?: string,
+    @Body("conversationId") conversationId?: string,
+    @Body("mentions") mentions?: { type: string; id: string }[],
+  ) {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    (res as unknown as { flushHeaders?: () => void }).flushHeaders?.();
+    const send = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    try {
+      await this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions, onEvent: send });
+    } catch (e) {
+      send({ type: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+    res.write("data: [DONE]\n\n");
+    res.end();
   }
 
   /** Things the chat can @-mention (documents, diagrams, meetings, members). */

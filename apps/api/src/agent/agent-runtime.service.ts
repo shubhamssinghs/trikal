@@ -12,7 +12,12 @@ const DEFAULT_ANTHROPIC = "claude-opus-4-8";
 const DEFAULT_OPENAI = "gpt-4o";
 
 type Mention = { type: string; id: string };
-type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null; mentions?: Mention[] };
+export type AgentEvent =
+  | { type: "meta"; runId: string; conversationId: string | null }
+  | { type: "step"; step: { idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: unknown } }
+  | { type: "done"; status: string; answer: string; artifacts: unknown[] }
+  | { type: "error"; message: string };
+type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null; mentions?: Mention[]; onEvent?: (ev: AgentEvent) => void };
 
 const MAX_HISTORY_TURNS = 12; // recent turns sent verbatim; older ones live in the rolling summary
 
@@ -80,7 +85,7 @@ export class AgentRuntimeService {
     return parts.length ? `\n\n[Referenced items the user @-mentioned — use these directly]\n${parts.join("\n\n")}` : "";
   }
 
-  async run({ surface, goal, projectId, organizationId, conversationId, mentions }: RunInput) {
+  async run({ surface, goal, projectId, organizationId, conversationId, mentions, onEvent }: RunInput) {
     const s = await this.settings.resolve(organizationId);
     const provider = s.llmProvider === "openai" ? "openai" : "anthropic";
     const apiKey = provider === "openai" ? s.openaiApiKey : s.anthropicApiKey;
@@ -109,16 +114,22 @@ export class AgentRuntimeService {
       data: { surface, goal, projectId: projectId ?? null, organizationId, conversationId: conversation?.id ?? null, model, status: "running" },
     });
 
+    onEvent?.({ type: "meta", runId: run.id, conversationId: conversation?.id ?? null });
+
     let idx = 0;
-    const step = (type: string, data: { skillSlug?: string; title?: string; content?: unknown }) =>
-      this.prisma.agentStep.create({
-        data: { runId: run.id, idx: idx++, type, skillSlug: data.skillSlug, title: data.title, content: (data.content ?? undefined) as Prisma.InputJsonValue | undefined },
+    const step = async (type: string, data: { skillSlug?: string; title?: string; content?: unknown }) => {
+      const i = idx++;
+      await this.prisma.agentStep.create({
+        data: { runId: run.id, idx: i, type, skillSlug: data.skillSlug, title: data.title, content: (data.content ?? undefined) as Prisma.InputJsonValue | undefined },
       });
+      onEvent?.({ type: "step", step: { idx: i, type, skillSlug: data.skillSlug, title: data.title, content: data.content } });
+    };
 
     if (!apiKey) {
       const answer = `No ${provider === "openai" ? "OpenAI" : "Anthropic"} API key is configured. Add one in Settings → AI & Models to use the agent.`;
       await step("error", { title: "Not configured", content: { error: answer } });
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed", error: "no_api_key", answer } });
+      onEvent?.({ type: "done", status: "failed", answer, artifacts: [] });
       return { runId: run.id, answer, status: "failed" as const };
     }
 
@@ -198,6 +209,7 @@ export class AgentRuntimeService {
           },
         });
       }
+      onEvent?.({ type: "done", status: "completed", answer: answer || "(no answer)", artifacts });
       return { runId: run.id, conversationId: conversation?.id ?? null, answer: answer || "(no answer)", status: "completed" as const, artifacts };
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
@@ -205,7 +217,9 @@ export class AgentRuntimeService {
       const friendly = this.friendlyError(err, provider);
       await step("error", { title: friendly ? "Provider error" : undefined, content: { error: friendly ?? err } });
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed", error: err, tokensIn, tokensOut } });
-      return { runId: run.id, answer: answer || friendly || "The agent run failed. Check the run trace for details.", status: "failed" as const };
+      const answerOut = answer || friendly || "The agent run failed. Check the run trace for details.";
+      onEvent?.({ type: "done", status: "failed", answer: answerOut, artifacts });
+      return { runId: run.id, answer: answerOut, status: "failed" as const };
     }
   }
 

@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X } from "lucide-react";
+import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2 } from "lucide-react";
 import { Markdown } from "./markdown";
 import { DocumentViewer } from "./document-viewer";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 type Artifact = { type?: string; id?: string; label?: string; href?: string };
-type Step = { id: string; idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: { text?: string; input?: unknown; artifact?: Artifact; error?: string } | null };
+type Step = { id?: string; idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: { text?: string; input?: unknown; artifact?: Artifact; error?: string } | null };
 type Run = { id: string; goal: string; answer?: string | null; status: string; model?: string | null; createdAt: string; steps: Step[] };
 type ConversationLite = { id: string; title: string; lastMessageAt: string };
 type Conversation = { id: string; title: string; runs: Run[] };
@@ -24,6 +24,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<string | null>(null); // optimistic user message
+  const [live, setLive] = useState<{ steps: Step[]; answer: string } | null>(null); // streaming turn
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [openDoc, setOpenDoc] = useState<string | null>(null);
   const [mentionables, setMentionables] = useState<Mentionable[]>([]);
@@ -51,6 +52,12 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [runs, pending]);
 
   const newChat = () => { setActiveId(null); setRuns([]); setSwitcherOpen(false); setMentions([]); };
+
+  const deleteChat = async (id: string) => {
+    await fetch(`${API_BASE}/agent/conversations/${id}`, { credentials: "include", method: "DELETE" }).catch(() => {});
+    if (id === activeId) newChat();
+    loadConversations();
+  };
 
   const onInput = (v: string) => {
     setInput(v);
@@ -82,12 +89,40 @@ export function ProjectChat({ projectId }: { projectId: string }) {
       convId = c.id; setActiveId(c.id);
     }
 
-    await fetch(`${API_BASE}/agent/ask`, {
-      credentials: "include", method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q, projectId, conversationId: convId, mentions: sentMentions.map((m) => ({ type: m.type, id: m.id })) }),
-    }).catch(() => {});
+    setLive({ steps: [], answer: "" });
+    try {
+      const res = await fetch(`${API_BASE}/agent/ask/stream`, {
+        credentials: "include", method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, projectId, conversationId: convId, mentions: sentMentions.map((m) => ({ type: m.type, id: m.id })) }),
+      });
+      const reader = res.body?.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      while (reader) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const blocks = buf.split("\n\n");
+        buf = blocks.pop() ?? "";
+        for (const block of blocks) {
+          const line = block.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let ev: { type: string; step?: Step };
+          try { ev = JSON.parse(payload); } catch { continue; }
+          if (ev.type === "step" && ev.step) {
+            const s = ev.step;
+            setLive((prev) => prev ? {
+              steps: [...prev.steps, s],
+              answer: s.type === "text" ? prev.answer + (prev.answer ? "\n" : "") + (s.content?.text ?? "") : prev.answer,
+            } : prev);
+          }
+        }
+      }
+    } catch { /* fall through to reload */ }
 
-    setSending(false); setPending(null);
+    setSending(false); setPending(null); setLive(null);
     await loadConversation(convId!);
     loadConversations();
   };
@@ -95,7 +130,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const activeTitle = conversations.find((c) => c.id === activeId)?.title;
 
   return (
-    <section className="flex flex-col rounded-xl border border-border bg-surface shadow-sm h-[72vh] min-h-[480px] overflow-hidden">
+    <section className="flex flex-col rounded-xl border border-border bg-surface shadow-sm h-[82vh] min-h-[520px] overflow-hidden">
       {/* Header: thread switcher */}
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 shrink-0">
         <div className="relative">
@@ -109,10 +144,14 @@ export function ProjectChat({ projectId }: { projectId: string }) {
               <button onClick={newChat} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-surface-2"><Plus size={14} /> New chat</button>
               <div className="border-t border-border my-1" />
               {conversations.length === 0 ? <p className="px-3 py-2 text-xs text-muted">No conversations yet.</p> : conversations.map((c) => (
-                <button key={c.id} onClick={() => { setActiveId(c.id); setSwitcherOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-sm truncate hover:bg-surface-2 ${c.id === activeId ? "text-foreground bg-surface-2/60" : "text-muted"}`}>
-                  {c.title}
-                </button>
+                <div key={c.id} className={`group flex items-center gap-1 pr-1.5 hover:bg-surface-2 ${c.id === activeId ? "bg-surface-2/60" : ""}`}>
+                  <button onClick={() => { setActiveId(c.id); setSwitcherOpen(false); }}
+                    className={`flex-1 min-w-0 text-left px-3 py-2 text-sm truncate ${c.id === activeId ? "text-foreground" : "text-muted"}`}>
+                    {c.title}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} title="Delete chat"
+                    className="p-1 rounded text-muted opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10"><Trash2 size={13} /></button>
+                </div>
               ))}
             </div>
           )}
@@ -136,7 +175,20 @@ export function ProjectChat({ projectId }: { projectId: string }) {
             {pending && (
               <div className="space-y-3">
                 <UserBubble text={pending} />
-                <div className="flex items-center gap-2 text-xs text-muted"><Loader2 size={13} className="animate-spin" /> Thinking…</div>
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] w-full space-y-2">
+                    {live && live.steps.filter((s) => s.type !== "text").length > 0 && (
+                      <Trace steps={live.steps.filter((s) => s.type !== "text")} defaultOpen />
+                    )}
+                    {live?.answer ? (
+                      <div className="inline-block rounded-2xl rounded-bl-md border border-border bg-surface-2/40 px-3.5 py-2 text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                        <Markdown projectId={projectId}>{live.answer}</Markdown>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-muted"><Loader2 size={13} className="animate-spin" /> {live && live.steps.length > 0 ? "Working…" : "Thinking…"}</div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </>
@@ -226,9 +278,13 @@ function Turn({ run, projectId, onOpenDoc }: { run: Run; projectId: string; onOp
           {run.status === "failed" && !run.answer && (
             <div className="inline-flex items-center gap-1.5 text-xs text-red-500"><AlertCircle size={13} /> The run failed.</div>
           )}
-          {artifacts.map((a, i) => (
-            <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} />
-          ))}
+          {artifacts.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {artifacts.map((a, i) => (
+                <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -254,8 +310,8 @@ function ArtifactCard({ artifact, projectId, onOpenDoc }: { artifact: Artifact; 
   );
 }
 
-function Trace({ steps }: { steps: Step[] }) {
-  const [open, setOpen] = useState(false);
+function Trace({ steps, defaultOpen = false }: { steps: Step[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const toolCalls = steps.filter((s) => s.type === "tool_call").length;
   return (
     <div className="rounded-lg border border-border bg-surface-2/20 text-xs">
@@ -265,10 +321,10 @@ function Trace({ steps }: { steps: Step[] }) {
       </button>
       {open && (
         <div className="px-3 pb-2 space-y-1.5 border-t border-border pt-2">
-          {steps.map((s) => {
+          {steps.map((s, i) => {
             const input = s.content?.input ? JSON.stringify(s.content.input) : "";
             return (
-              <div key={s.id} className="text-[11px]">
+              <div key={s.id ?? `${s.idx}-${i}`} className="text-[11px]">
                 {s.type === "thinking" && <p className="text-muted italic whitespace-pre-wrap line-clamp-4">{s.content?.text}</p>}
                 {s.type === "tool_call" && (
                   <p className="text-foreground flex items-start gap-1">
