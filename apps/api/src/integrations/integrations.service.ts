@@ -5,10 +5,12 @@ import { GranolaClient, type GranolaScope } from "./granola.client";
 const PROVIDER = "granola";
 
 function shapeConnection(i: { id: string; provider: string; name: string; status: string; lastError: string | null; credentials: unknown; updatedAt: Date }) {
-  const key = (i.credentials as { apiKey?: string } | null)?.apiKey ?? "";
+  const creds = (i.credentials as { apiKey?: string; accessToken?: string; refreshToken?: string } | null) ?? {};
+  const key = creds.apiKey ?? "";
   return {
     id: i.id, provider: i.provider, name: i.name, status: i.status, lastError: i.lastError,
-    connected: !!key, keyHint: key ? `grn_…${key.slice(-4)}` : null, updatedAt: i.updatedAt,
+    connected: !!(key || creds.accessToken || creds.refreshToken),
+    keyHint: key ? `grn_…${key.slice(-4)}` : null, updatedAt: i.updatedAt,
   };
 }
 

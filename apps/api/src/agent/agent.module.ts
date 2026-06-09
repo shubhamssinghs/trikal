@@ -6,9 +6,10 @@ import { SkillsService } from "../skills/skills.service";
 import { KnowledgeModule } from "../knowledge/knowledge.module";
 import { DiagramsModule } from "../diagrams/diagrams.module";
 import { AiModule } from "../ai/ai.module";
+import { IntegrationsModule } from "../integrations/integrations.module";
 
 @Module({
-  imports: [KnowledgeModule, DiagramsModule, AiModule],
+  imports: [KnowledgeModule, DiagramsModule, AiModule, IntegrationsModule],
   controllers: [AgentController, SkillsController],
   providers: [AgentRuntimeService, SkillsService],
   exports: [AgentRuntimeService],

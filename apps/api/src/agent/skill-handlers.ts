@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
+import { CalendarService } from "../integrations/calendar.service";
 
 /** Context passed to every skill handler. */
 export interface SkillContext {
@@ -9,6 +10,7 @@ export interface SkillContext {
   prisma: PrismaClient;
   knowledge: KnowledgeService;
   diagrams: DiagramsService;
+  calendar: CalendarService;
 }
 
 /** A handler returns text for the model + an optional artifact surfaced in the UI. */
@@ -52,6 +54,18 @@ export const HANDLERS: Record<string, SkillHandler> = {
       text: `Created a ${kind} diagram "${diagram.title}" with ${nodeCount} node(s). It's saved as a draft the user can open and edit.`,
       artifact: { type: "diagram", id: diagram.id, label: diagram.title, href },
     };
+  },
+
+  // Upcoming meetings from the connected calendar(s) — for meeting prep.
+  "calendar.upcoming": async (input, ctx) => {
+    const days = typeof input.days === "number" ? input.days : 7;
+    const events = await ctx.calendar.listUpcomingMeetings(ctx.organizationId, { days, max: 20 });
+    if (!events.length) return { text: "No upcoming meetings found (or no calendar is connected). Connect Google Calendar in Settings → Integrations." };
+    const lines = events.map((e) => {
+      const who = e.attendees.map((a) => a.name || a.email).filter(Boolean).join(", ");
+      return `- ${e.title} — ${e.start ?? "?"}${e.end ? ` to ${e.end}` : ""}${who ? ` · attendees: ${who}` : ""}${e.joinUrl ? ` · ${e.joinUrl}` : ""}`;
+    });
+    return { text: "Upcoming meetings:\n" + lines.join("\n") };
   },
 
   // List the project's diagrams so the agent can reference/embed an existing one.

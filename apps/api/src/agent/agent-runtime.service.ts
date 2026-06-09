@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { SettingsService } from "../settings/settings.service";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
+import { CalendarService } from "../integrations/calendar.service";
 import { HANDLERS, type SkillContext } from "./skill-handlers";
 
 const MAX_ITERATIONS = 8;
@@ -30,6 +31,7 @@ export class AgentRuntimeService {
     private readonly settings: SettingsService,
     private readonly knowledge: KnowledgeService,
     private readonly diagrams: DiagramsService,
+    private readonly calendar: CalendarService,
   ) {}
 
   private enabledSkills(organizationId: string): Promise<Skill[]> {
@@ -149,7 +151,7 @@ export class AgentRuntimeService {
       ...skills.filter((sk) => sk.instructions).map((sk) => `\n[${sk.name}] ${sk.instructions}`),
     ].filter(Boolean).join("\n");
 
-    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams };
+    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams, calendar: this.calendar };
     const artifacts: unknown[] = [];
 
     // Inline any @-mentioned content into the message the model actually sees

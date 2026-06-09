@@ -1,16 +1,41 @@
-import { Controller, Get, Post, Delete, Body, Param, Query } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Body, Param, Query, Res } from "@nestjs/common";
+import { Response } from "express";
 import { IntegrationsService } from "./integrations.service";
 import { IntegrationSyncService } from "./integration-sync.service";
+import { CalendarService } from "./calendar.service";
 import type { GranolaScope } from "./granola.client";
 
 const DEV_ORG_ID = "org_dev";
+const WEB_URL = process.env.WEB_URL ?? "http://localhost:3100";
 
 @Controller("integrations")
 export class IntegrationsController {
   constructor(
     private readonly integrations: IntegrationsService,
     private readonly sync: IntegrationSyncService,
+    private readonly calendar: CalendarService,
   ) {}
+
+  // ── Google Calendar OAuth ──────────────────────────────────────────────────
+  @Get("google/connect")
+  googleConnect(@Res() res: Response) {
+    res.redirect(this.calendar.googleConnectUrl(DEV_ORG_ID));
+  }
+
+  @Get("google/callback")
+  async googleCallback(@Query("code") code: string, @Query("state") state: string, @Res() res: Response) {
+    try {
+      if (code) await this.calendar.handleGoogleCallback(code, state ?? "");
+      res.redirect(`${WEB_URL}/settings?connected=google`);
+    } catch {
+      res.redirect(`${WEB_URL}/settings?error=google`);
+    }
+  }
+
+  @Delete("google")
+  googleDisconnect() {
+    return this.calendar.disconnectGoogle(DEV_ORG_ID);
+  }
 
   // ── Org connections ──────────────────────────────────────────────────────
   @Get()

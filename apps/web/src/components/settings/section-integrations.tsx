@@ -15,7 +15,6 @@ const CONNECTORS: Conn[] = [
   { id: "slack", name: "Slack", desc: "Read channels, draft replies", category: "Communication", logo: "https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png", color: "#4A154B" },
   { id: "teams", name: "Microsoft Teams", desc: "Read messages and channels", category: "Communication", logo: "https://teams.microsoft.com/favicon.ico", color: "#6264A7" },
   { id: "gmail", name: "Gmail", desc: "Read & draft emails", category: "Email", logo: "https://www.gstatic.com/images/branding/product/2x/gmail_48dp.png", color: "#EA4335" },
-  { id: "google-calendar", name: "Google Calendar", desc: "Pull upcoming meetings", category: "Calendar", logo: "https://www.gstatic.com/images/branding/product/2x/calendar_48dp.png", color: "#4285F4" },
   { id: "zoom", name: "Zoom", desc: "Meeting recordings & transcripts", category: "Meetings", logo: "https://st1.zoom.us/zoom.ico", color: "#2D8CFF" },
   { id: "google-drive", name: "Google Drive", desc: "Sync documents", category: "Docs", logo: "https://www.gstatic.com/images/branding/product/2x/drive_48dp.png", color: "#1FA463" },
 ];
@@ -110,10 +109,45 @@ function GranolaCard() {
   );
 }
 
+function GoogleCalendarCard() {
+  const [conn, setConn] = useState<GranolaConn | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = () =>
+    fetch(`${API_BASE}/integrations`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: Array<GranolaConn & { provider: string }>) => setConn(list.find((c) => c.provider === "google-calendar") ?? { connected: false, status: "disconnected", keyHint: null, lastError: null }))
+      .catch(() => setConn({ connected: false, status: "disconnected", keyHint: null, lastError: null }));
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const connect = () => { window.location.href = `${API_BASE}/integrations/google/connect`; };
+  const disconnect = async () => { setBusy(true); await fetch(`${API_BASE}/integrations/google`, { credentials: "include", method: "DELETE" }).catch(() => {}); setBusy(false); load(); };
+
+  const connected = conn?.connected;
+  return (
+    <Card title="Google Calendar" accent={connected ? "blue" : "default"}
+      action={connected ? <span className="inline-flex items-center gap-1 text-xs text-emerald-400"><Check size={13} /> Connected</span> : null}>
+      <div className="flex items-start gap-3">
+        <Logo name="Google Calendar" logo="https://www.gstatic.com/images/branding/product/2x/calendar_48dp.png" color="#4285F4" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted mb-3">Read-only access to your upcoming meetings so the assistant can prep you (the <span className="text-foreground">Prepare me for the meeting</span> skill) and surface what&apos;s next.</p>
+          {connected ? (
+            <Button variant="secondary" onClick={disconnect} disabled={busy}>{busy ? <Loader2 size={14} className="animate-spin" /> : "Disconnect"}</Button>
+          ) : (
+            <Button onClick={connect}><Plug size={14} /> Connect Google</Button>
+          )}
+          {conn?.status === "error" && conn.lastError && <p className="text-xs mt-2 text-red-500">{conn.lastError}</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function IntegrationsSection() {
   return (
     <div className="space-y-5">
       <GranolaCard />
+      <GoogleCalendarCard />
 
       <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 px-4 py-3">
         <p className="text-sm text-foreground">More connectors are coming.</p>
