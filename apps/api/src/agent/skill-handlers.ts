@@ -57,15 +57,77 @@ export const HANDLERS: Record<string, SkillHandler> = {
   },
 
   // Upcoming meetings from the connected calendar(s) — for meeting prep.
+  // The calendar is the user's whole calendar (not per-project), so when there
+  // is a project context we annotate which meetings actually belong to THIS
+  // project (by attendee email/name, company/project name in the title, or
+  // attendee email domain) so the agent never preps a different project's meeting.
   "calendar.upcoming": async (input, ctx) => {
     const days = typeof input.days === "number" ? input.days : 7;
     const events = await ctx.calendar.listUpcomingMeetings(ctx.organizationId, { days, max: 20 });
     if (!events.length) return { text: "No upcoming meetings found (or no calendar is connected). Connect Google Calendar in Settings → Integrations." };
-    const lines = events.map((e) => {
+
+    const fmt = (e: (typeof events)[number], tag?: string) => {
       const who = e.attendees.map((a) => a.name || a.email).filter(Boolean).join(", ");
-      return `- ${e.title} — ${e.start ?? "?"}${e.end ? ` to ${e.end}` : ""}${who ? ` · attendees: ${who}` : ""}${e.joinUrl ? ` · ${e.joinUrl}` : ""}`;
+      return `- ${e.title} — ${e.start ?? "?"}${e.end ? ` to ${e.end}` : ""}${who ? ` · attendees: ${who}` : ""}${e.joinUrl ? ` · ${e.joinUrl}` : ""}${tag ? ` ${tag}` : ""}`;
+    };
+
+    if (!ctx.projectId) {
+      return { text: "Upcoming meetings:\n" + events.map((e) => fmt(e)).join("\n") };
+    }
+
+    // Project-scoped relevance matching.
+    const project = await ctx.prisma.project.findFirst({
+      where: { id: ctx.projectId, organizationId: ctx.organizationId },
+      select: { name: true, company: { select: { name: true } } },
     });
-    return { text: "Upcoming meetings:\n" + lines.join("\n") };
+    const members = await ctx.prisma.member.findMany({
+      where: { projectId: ctx.projectId },
+      select: { name: true, email: true },
+    });
+
+    const GENERIC = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "live.com", "aol.com"]);
+    const norm = (s: string) => s.toLowerCase().trim();
+    const domainOf = (email?: string) => (email && email.includes("@") ? norm(email.split("@")[1]) : "");
+
+    const memberEmails = new Set(members.map((m) => norm(m.email ?? "")).filter(Boolean));
+    const memberDomains = new Set(Array.from(memberEmails).map(domainOf).filter((d) => d && !GENERIC.has(d)));
+    const memberNames = new Set(members.map((m) => norm(m.name)).filter((n) => n.length >= 3));
+    const titleTokens = [project?.name, project?.company?.name]
+      .filter(Boolean).map((s) => norm(String(s))).filter((s) => s.length >= 3);
+
+    const scored = events.map((e) => {
+      const reasons: string[] = [];
+      const attEmails = e.attendees.map((a) => norm(a.email ?? "")).filter(Boolean);
+      const attNames = e.attendees.map((a) => norm(a.name ?? "")).filter(Boolean);
+      const t = norm(e.title ?? "");
+      if (attEmails.some((em) => memberEmails.has(em))) reasons.push("attendee on this project");
+      if (attNames.some((n) => memberNames.has(n))) reasons.push("named project member");
+      if (titleTokens.some((tok) => t.includes(tok))) reasons.push("project/company in title");
+      if (!reasons.length && attEmails.map(domainOf).some((d) => memberDomains.has(d))) reasons.push("attendee from project's domain");
+      return { e, reasons };
+    });
+
+    const matched = scored.filter((s) => s.reasons.length);
+    const others = scored.filter((s) => !s.reasons.length);
+    const pname = project?.name ?? "this project";
+
+    if (!matched.length) {
+      return {
+        text:
+          `No upcoming meeting on the calendar appears to belong to "${pname}" (matched on project members, company/project name, or attendee domains). ` +
+          `Do NOT prepare a brief for an unrelated meeting — tell the user none of their upcoming meetings match this project and list the upcoming meetings so they can pick one:\n` +
+          others.map((s) => fmt(s.e)).join("\n"),
+      };
+    }
+
+    const text =
+      `Upcoming meetings for "${pname}" (prepare ONLY for these unless the user names a specific one):\n` +
+      matched.map((s) => fmt(s.e, `  [matches: ${s.reasons.join(", ")}]`)).join("\n") +
+      (others.length
+        ? `\n\nOther upcoming meetings on the calendar that do NOT belong to this project (do not prep these unless explicitly asked):\n` +
+          others.map((s) => fmt(s.e)).join("\n")
+        : "");
+    return { text };
   },
 
   // List the project's diagrams so the agent can reference/embed an existing one.
