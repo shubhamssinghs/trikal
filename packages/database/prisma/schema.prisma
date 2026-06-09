@@ -148,6 +148,7 @@ model Project {
   agentRuns     AgentRun[]
   conversations Conversation[]
   integrations  ProjectIntegration[]
+  briefing      ProjectBriefing?
 
   @@map("projects")
 }
@@ -301,6 +302,18 @@ model MeetingTranscript {
 
   @@unique([projectId, source, externalId])
   @@map("meeting_transcripts")
+}
+
+/// Cached, AI-generated project briefing shown on the project dashboard.
+model ProjectBriefing {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  data        Json     // { plate[], topics[], openQuestions[], suggestedActions[{title,rationale}] }
+  generatedAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_briefings")
 }
 
 // ─── Integrations (connectors) ─────────────────────────────────────────────

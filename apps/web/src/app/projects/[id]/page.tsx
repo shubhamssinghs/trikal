@@ -5,7 +5,8 @@ import { formatDate } from "@/lib/format";
 import { Shell } from "@/components/shell";
 import { PageHeader, Card, StatusBadge, Button } from "@/components/ui";
 import { ApprovalQueue } from "@/components/approval-queue";
-import { ProjectChat } from "@/components/project-chat";
+import { ProjectBriefing } from "@/components/project-briefing";
+import { ProjectAssistant } from "@/components/project-assistant";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { MembersPanel } from "@/components/members-panel";
@@ -56,8 +57,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         }
         actions={
           <>
+            <ProjectAssistant projectId={id} />
             <Link href={`/projects/${id}/transcripts`}>
-              <Button variant="primary"><Library size={14} /> Knowledge Base</Button>
+              <Button variant="secondary"><Library size={14} /> Knowledge Base</Button>
             </Link>
             <Link href={`/projects/${id}/diagrams`}>
               <Button variant="secondary"><Workflow size={14} /> Diagrams</Button>
@@ -85,7 +87,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-5">
-          <ProjectChat projectId={id} />
+          <ProjectBriefing projectId={id} />
           <ApprovalQueue projectId={id} recommendations={pending} />
           <MilestonesPanel projectId={id} milestones={milestones as never} />
           <RisksPanel projectId={id} risks={risks as never} />

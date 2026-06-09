@@ -18,6 +18,7 @@ import { MembersModule } from "./members/members.module";
 import { DiagramsModule } from "./diagrams/diagrams.module";
 import { AgentModule } from "./agent/agent.module";
 import { IntegrationsModule } from "./integrations/integrations.module";
+import { BriefingModule } from "./briefing/briefing.module";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { IntegrationsModule } from "./integrations/integrations.module";
     DiagramsModule,
     AgentModule,
     IntegrationsModule,
+    BriefingModule,
   ],
 })
 export class AppModule {}

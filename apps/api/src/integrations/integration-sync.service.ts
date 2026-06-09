@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
+import { BriefingService } from "../briefing/briefing.service";
 import { Prisma } from "@prisma/client";
 import { GranolaClient, noteMatchesScope, buildNoteContent, buildNoteMetadata, noteOccurredAt, type GranolaScope } from "./granola.client";
 
@@ -15,6 +16,7 @@ export class IntegrationSyncService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly knowledge: KnowledgeService,
+    private readonly briefing: BriefingService,
   ) {}
 
   onModuleInit() {
@@ -88,6 +90,12 @@ export class IntegrationSyncService implements OnModuleInit {
       }
 
       await this.finish(linkId, "ok", ingested);
+      // Refresh the project briefing in the background when new meetings landed.
+      if (ingested > 0) {
+        this.briefing.generate(link.projectId, organizationId).catch((e) =>
+          this.logger.warn(`Briefing regen after sync failed: ${e instanceof Error ? e.message : e}`),
+        );
+      }
       return { ingested };
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
