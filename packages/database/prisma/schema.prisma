@@ -146,6 +146,7 @@ model Project {
   aiRuns        AiRun[]
   diagrams      Diagram[]
   agentRuns     AgentRun[]
+  conversations Conversation[]
   integrations  ProjectIntegration[]
 
   @@map("projects")
@@ -533,11 +534,32 @@ model Skill {
   @@map("skills")
 }
 
-/// One agent invocation — the unit shown in the dashboard's run inspector.
+/// A chat thread (workspace conversation) grouping agent turns. History is
+/// maintained across turns; `summary` holds the rolling compression of old turns.
+model Conversation {
+  id             String   @id @default(cuid())
+  projectId      String?
+  organizationId String
+  title          String   @default("New chat")
+  summary        String?  // rolling summary of older turns (context compression)
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastMessageAt  DateTime @default(now())
+
+  project Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runs    AgentRun[]
+
+  @@index([projectId])
+  @@map("conversations")
+}
+
+/// One agent invocation (one chat turn). The unit shown in the run inspector.
 model AgentRun {
   id             String   @id @default(cuid())
   projectId      String?
   organizationId String
+  conversationId String?
   userId         String   @default("user_dev")
   surface        String   // ask | transcript | skill-generator | …
   goal           String   // the user's request / trigger
@@ -550,9 +572,11 @@ model AgentRun {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  project Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  steps   AgentStep[]
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  steps        AgentStep[]
 
+  @@index([conversationId])
   @@map("agent_runs")
 }
 

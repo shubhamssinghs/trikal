@@ -11,7 +11,9 @@ const MAX_ITERATIONS = 8;
 const DEFAULT_ANTHROPIC = "claude-opus-4-8";
 const DEFAULT_OPENAI = "gpt-4o";
 
-type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string };
+type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null };
+
+const MAX_HISTORY_TURNS = 12; // recent turns sent verbatim; older ones live in the rolling summary
 
 @Injectable()
 export class AgentRuntimeService {
@@ -36,14 +38,33 @@ export class AgentRuntimeService {
    * function-calling or Anthropic tool-use); the model decides which enabled
    * skills to call and may chain several. Every step is persisted as a trace.
    */
-  async run({ surface, goal, projectId, organizationId }: RunInput) {
+  async run({ surface, goal, projectId, organizationId, conversationId }: RunInput) {
     const s = await this.settings.resolve(organizationId);
     const provider = s.llmProvider === "openai" ? "openai" : "anthropic";
     const apiKey = provider === "openai" ? s.openaiApiKey : s.anthropicApiKey;
     const model = s.llmModel || (provider === "openai" ? DEFAULT_OPENAI : DEFAULT_ANTHROPIC);
 
+    // Load conversation + prior turns (for memory) when in a thread.
+    const conversation = conversationId
+      ? await this.prisma.conversation.findFirst({ where: { id: conversationId, organizationId } })
+      : null;
+    const priorRuns = conversation
+      ? await this.prisma.agentRun.findMany({
+          where: { conversationId: conversation.id, status: "completed" },
+          orderBy: { createdAt: "asc" },
+          select: { goal: true, answer: true },
+        })
+      : [];
+    const history = priorRuns
+      .slice(-MAX_HISTORY_TURNS)
+      .flatMap((r) => [
+        { role: "user" as const, content: r.goal },
+        { role: "assistant" as const, content: r.answer ?? "" },
+      ])
+      .filter((m) => m.content);
+
     const run = await this.prisma.agentRun.create({
-      data: { surface, goal, projectId: projectId ?? null, organizationId, model, status: "running" },
+      data: { surface, goal, projectId: projectId ?? null, organizationId, conversationId: conversation?.id ?? null, model, status: "running" },
     });
 
     let idx = 0;
@@ -71,6 +92,7 @@ export class AgentRuntimeService {
       "Prefer answering from project knowledge. When a diagram would communicate better than prose, create one.",
       "Be concise and cite which skill/source produced information when relevant.",
       project ? `\nCurrent project: ${project.name}${project.description ? ` — ${project.description}` : ""}` : "",
+      conversation?.summary ? `\nEarlier in this conversation (summary):\n${conversation.summary}` : "",
       ...skills.filter((sk) => sk.instructions).map((sk) => `\n[${sk.name}] ${sk.instructions}`),
     ].filter(Boolean).join("\n");
 
@@ -111,14 +133,24 @@ export class AgentRuntimeService {
 
     try {
       if (provider === "openai") {
-        const r = await this.loopOpenAI({ apiKey, model, system, goal, skills, bySlug, step, executeTool });
+        const r = await this.loopOpenAI({ apiKey, model, system, goal, history, skills, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       } else {
-        const r = await this.loopAnthropic({ apiKey, model, system, goal, skills, bySlug, step, executeTool });
+        const r = await this.loopAnthropic({ apiKey, model, system, goal, history, skills, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       }
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed", answer, tokensIn, tokensOut } });
-      return { runId: run.id, answer: answer || "(no answer)", status: "completed" as const, artifacts };
+      if (conversation) {
+        await this.prisma.conversation.update({
+          where: { id: conversation.id },
+          data: {
+            lastMessageAt: new Date(),
+            // Title the thread from its first user message.
+            ...(conversation.title === "New chat" && priorRuns.length === 0 ? { title: goal.slice(0, 60) } : {}),
+          },
+        });
+      }
+      return { runId: run.id, conversationId: conversation?.id ?? null, answer: answer || "(no answer)", status: "completed" as const, artifacts };
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       this.logger.error(`Agent run ${run.id} failed: ${err}`);
@@ -133,7 +165,7 @@ export class AgentRuntimeService {
   private async loopAnthropic(p: LoopParams) {
     const client = new Anthropic({ apiKey: p.apiKey });
     const tools = p.skills.map((sk) => ({ name: sk.slug, description: sk.description, input_schema: sk.inputSchema as Record<string, unknown> }));
-    const messages: Anthropic.MessageParam[] = [{ role: "user", content: p.goal }];
+    const messages: Anthropic.MessageParam[] = [...p.history.map((h) => ({ role: h.role, content: h.content })), { role: "user", content: p.goal }];
     let answer = "", tokensIn = 0, tokensOut = 0;
 
     for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
@@ -169,6 +201,7 @@ export class AgentRuntimeService {
     const tools = p.skills.map((sk) => ({ type: "function" as const, function: { name: sk.slug, description: sk.description, parameters: sk.inputSchema as Record<string, unknown> } }));
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: p.system },
+      ...p.history.map((h) => ({ role: h.role, content: h.content })),
       { role: "user", content: p.goal },
     ];
     let answer = "", tokensIn = 0, tokensOut = 0;
@@ -219,6 +252,45 @@ export class AgentRuntimeService {
     return null;
   }
 
+  // ── Conversations (chat threads) ──────────────────────────────────────────
+  createConversation(organizationId: string, projectId?: string | null, title?: string) {
+    return this.prisma.conversation.create({
+      data: { organizationId, projectId: projectId ?? null, title: title?.trim() || "New chat" },
+    });
+  }
+
+  listConversations(organizationId: string, projectId?: string) {
+    return this.prisma.conversation.findMany({
+      where: { organizationId, archived: false, ...(projectId ? { projectId } : {}) },
+      orderBy: { lastMessageAt: "desc" },
+      take: 100,
+      select: { id: true, title: true, projectId: true, lastMessageAt: true, createdAt: true },
+    });
+  }
+
+  /** A conversation with its turns (each turn = user goal + assistant answer + trace steps). */
+  getConversation(id: string, organizationId: string) {
+    return this.prisma.conversation.findFirst({
+      where: { id, organizationId },
+      include: {
+        runs: {
+          orderBy: { createdAt: "asc" },
+          include: { steps: { orderBy: { idx: "asc" } } },
+        },
+      },
+    });
+  }
+
+  async renameConversation(id: string, organizationId: string, title: string) {
+    await this.prisma.conversation.updateMany({ where: { id, organizationId }, data: { title: title.trim() || "New chat" } });
+    return { ok: true };
+  }
+
+  async archiveConversation(id: string, organizationId: string) {
+    await this.prisma.conversation.updateMany({ where: { id, organizationId }, data: { archived: true } });
+    return { ok: true };
+  }
+
   listRuns(organizationId: string, projectId?: string) {
     return this.prisma.agentRun.findMany({
       where: { organizationId, ...(projectId ? { projectId } : {}) },
@@ -234,11 +306,13 @@ export class AgentRuntimeService {
 }
 
 type StepFn = (type: string, data: { skillSlug?: string; title?: string; content?: unknown }) => Promise<unknown>;
+type HistoryTurn = { role: "user" | "assistant"; content: string };
 interface LoopParams {
   apiKey: string;
   model: string;
   system: string;
   goal: string;
+  history: HistoryTurn[];
   skills: Skill[];
   bySlug: Map<string, Skill>;
   step: StepFn;
