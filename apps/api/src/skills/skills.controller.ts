@@ -12,6 +12,11 @@ export class SkillsController {
     return this.skills.list(DEV_ORG_ID);
   }
 
+  @Post("draft")
+  draft(@Body("description") description: string) {
+    return this.skills.draft(DEV_ORG_ID, description);
+  }
+
   @Post()
   create(@Body() body: Parameters<SkillsService["create"]>[1]) {
     return this.skills.create(DEV_ORG_ID, body);

@@ -106,7 +106,7 @@ async function main() {
       description: "Author a new reusable skill from a specification: a name, description, when-to-use instructions, and which existing skills it composes. The new skill is created disabled for human review in Settings → Skills.",
       handlerKey: "skill.create",
       kind: "action",
-      instructions: "When asked to create or design a new skill, research what it needs, ask clarifying questions if the request is ambiguous, then call generate_skill with a clear description and when-to-use instructions.",
+      instructions: "When the user asks to create or design a new skill: first research the intent and review the skills that already exist so you can compose them where useful. If the request is ambiguous, ask one or two clarifying questions before proceeding. Then author the complete skill yourself — a clear snake_case slug, a name, a description that states WHEN the agent should call it, when-to-use instructions, the kind (composite if it orchestrates existing skills, else prompt), and which existing skill slugs it composes — and call generate_skill with those fields. The new skill is created disabled for human review.",
       inputSchema: { type: "object", properties: { slug: { type: "string" }, name: { type: "string" }, description: { type: "string" }, instructions: { type: "string" }, kind: { type: "string", enum: ["composite", "prompt"] }, composes: { type: "array", items: { type: "string" } } }, required: ["slug", "name", "description"], additionalProperties: false },
     },
   ];
