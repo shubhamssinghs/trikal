@@ -3,8 +3,13 @@ import { VoyageAIClient } from "voyageai";
 import { SettingsService } from "../settings/settings.service";
 
 const EMBEDDING_MODEL = "voyage-3-lite"; // 512 dims
-const BATCH_SIZE = 8;
+// Pack many chunks per request (Voyage allows up to 1000 inputs / ~120K tokens)
+// to minimize request count — the binding constraint on free/low tiers is RPM.
+const BATCH_SIZE = 128;
+const INTER_BATCH_DELAY_MS = 1500; // gentle spacing to stay under per-minute limits
 const DEV_ORG_ID = "org_dev";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 @Injectable()
 export class EmbeddingService {
@@ -23,16 +28,17 @@ export class EmbeddingService {
     return new VoyageAIClient({ apiKey: s.voyageApiKey });
   }
 
-  private async withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, retries = 6): Promise<T> {
     for (let i = 0; i < retries; i++) {
       try {
         return await fn();
       } catch (err: unknown) {
-        const isRateLimit = err instanceof Error && err.message.includes("429");
+        const msg = err instanceof Error ? err.message : String(err);
+        const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("rate");
         if (isRateLimit && i < retries - 1) {
-          const delay = (i + 1) * 20_000;
-          this.logger.warn(`Voyage rate limit hit, retrying in ${delay / 1000}s...`);
-          await new Promise((r) => setTimeout(r, delay));
+          const delay = Math.min(15_000 * (i + 1), 60_000); // 15s,30s,45s,60s,60s…
+          this.logger.warn(`Voyage rate limit hit, retrying in ${delay / 1000}s (attempt ${i + 1}/${retries})...`);
+          await sleep(delay);
         } else {
           throw err;
         }
@@ -53,6 +59,7 @@ export class EmbeddingService {
       );
       const embeddings = (response.data ?? []).map((d) => (d.embedding ?? []) as number[]);
       results.push(...embeddings);
+      if (i + BATCH_SIZE < texts.length) await sleep(INTER_BATCH_DELAY_MS); // space requests
     }
     return results;
   }

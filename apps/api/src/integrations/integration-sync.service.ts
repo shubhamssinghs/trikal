@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
-import { GranolaClient, noteMatchesScope, type GranolaScope } from "./granola.client";
+import { GranolaClient, noteMatchesScope, buildNoteContent, noteOccurredAt, type GranolaScope } from "./granola.client";
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000; // poll due projects every 30 min
 const MAX_NOTES_PER_SYNC = 50;
@@ -49,25 +49,31 @@ export class IntegrationSyncService implements OnModuleInit {
     let ingested = 0;
     try {
       const notes = await client.listNotes(link.lastSyncedAt, 200);
-      const matched = notes.filter((n) => noteMatchesScope(n, scope)).slice(0, MAX_NOTES_PER_SYNC);
 
-      for (const note of matched) {
-        // Dedupe: skip notes already ingested for this project.
+      for (const summary of notes) {
+        if (ingested >= MAX_NOTES_PER_SYNC) break;
+        // Dedupe first: skip notes already ingested for this project (avoids refetch).
         const existing = await this.prisma.meetingTranscript.findFirst({
-          where: { projectId: link.projectId, source: "granola", externalId: note.id },
+          where: { projectId: link.projectId, source: "granola", externalId: summary.id },
           select: { id: true },
         });
         if (existing) continue;
 
-        const text = await client.getTranscriptText(note.id).catch(() => "");
-        if (!text.trim()) { await sleep(220); continue; }
+        // Fetch full detail (AI notes + attendees/folder/calendar + transcript), then scope-match.
+        const note = await client.getNote(summary.id).catch(() => null);
+        await sleep(220);
+        if (!note) continue;
+        if (!noteMatchesScope(note, scope)) continue;
+
+        const text = buildNoteContent(note);
+        if (!text.trim()) continue;
 
         const transcript = await this.prisma.meetingTranscript.create({
           data: {
             projectId: link.projectId,
             title: note.title ?? "Granola meeting",
             rawContent: text,
-            occurredAt: note.created ? new Date(note.created) : null,
+            occurredAt: noteOccurredAt(note),
             source: "granola",
             externalId: note.id,
           },

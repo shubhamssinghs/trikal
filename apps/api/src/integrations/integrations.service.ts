@@ -68,7 +68,7 @@ export class IntegrationsService {
     const conn = await this.requireConnection(organizationId);
     const apiKey = (conn.credentials as { apiKey?: string }).apiKey ?? "";
     const notes = await this.granolaClientFor(apiKey).listNotes(null, 100);
-    return notes.map((n) => ({ id: n.id, title: n.title ?? "Untitled", summary: n.summary ?? "", owner: n.owner?.email ?? n.owner?.name ?? "", created: n.created ?? null }));
+    return notes.map((n) => ({ id: n.id, title: n.title ?? "Untitled", summary: "", owner: n.owner?.email ?? n.owner?.name ?? "", created: n.created_at ?? null }));
   }
 
   // ── Per-project links ────────────────────────────────────────────────────

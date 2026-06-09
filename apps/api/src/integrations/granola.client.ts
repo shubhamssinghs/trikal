@@ -1,14 +1,34 @@
 const BASE_URL = "https://public-api.granola.ai/v1";
 
-export interface GranolaNote {
+export interface GranolaNoteSummary {
   id: string;
   title?: string;
-  summary?: string;
   owner?: { name?: string; email?: string };
-  created?: string;
-  updated?: string;
-  folder_id?: string;
-  folderId?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GranolaTranscriptItem {
+  text?: string;
+  start_time?: string;
+  end_time?: string;
+  speaker?: { source?: string; diarization_label?: string };
+}
+
+export interface GranolaNote extends GranolaNoteSummary {
+  web_url?: string;
+  summary_text?: string;
+  summary_markdown?: string;
+  attendees?: Array<{ name?: string; email?: string }>;
+  calendar_event?: {
+    event_title?: string;
+    organiser?: string;
+    invitees?: Array<{ email?: string }>;
+    scheduled_start_time?: string;
+    scheduled_end_time?: string;
+  };
+  folder_membership?: Array<{ folder_id?: string; id?: string; name?: string } | string>;
+  transcript?: GranolaTranscriptItem[];
 }
 
 export interface GranolaScope {
@@ -29,7 +49,6 @@ export class GranolaClient {
     return { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" };
   }
 
-  /** Probe the key — used for "Test connection". */
   async test(): Promise<{ ok: boolean; error?: string }> {
     if (!this.apiKey) return { ok: false, error: "Missing API key" };
     try {
@@ -42,9 +61,9 @@ export class GranolaClient {
     }
   }
 
-  /** List notes created after `since`, following the cursor. */
-  async listNotes(since?: Date | null, max = 200): Promise<GranolaNote[]> {
-    const out: GranolaNote[] = [];
+  /** List notes created after `since`, following the cursor (minimal fields). */
+  async listNotes(since?: Date | null, max = 200): Promise<GranolaNoteSummary[]> {
+    const out: GranolaNoteSummary[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < 25 && out.length < max; page++) {
       const params = new URLSearchParams();
@@ -52,7 +71,7 @@ export class GranolaClient {
       if (cursor) params.set("cursor", cursor);
       const res = await fetch(`${BASE_URL}/notes?${params.toString()}`, { headers: this.headers });
       if (!res.ok) throw new Error(`Granola /notes ${res.status}`);
-      const body = (await res.json()) as { notes?: GranolaNote[]; data?: GranolaNote[]; hasMore?: boolean; cursor?: string };
+      const body = (await res.json()) as { notes?: GranolaNoteSummary[]; data?: GranolaNoteSummary[]; hasMore?: boolean; cursor?: string };
       out.push(...(body.notes ?? body.data ?? []));
       if (!body.hasMore || !body.cursor) break;
       cursor = body.cursor;
@@ -61,26 +80,55 @@ export class GranolaClient {
     return out;
   }
 
-  /** Fetch a note's transcript, flattened to plain text (summary header + lines). */
-  async getTranscriptText(noteId: string): Promise<string> {
+  /** Full note detail incl. AI summary, attendees, calendar, folder, and transcript. */
+  async getNote(noteId: string): Promise<GranolaNote> {
     const res = await fetch(`${BASE_URL}/notes/${noteId}?include=transcript`, { headers: this.headers });
     if (!res.ok) throw new Error(`Granola /notes/${noteId} ${res.status}`);
-    const note = (await res.json()) as GranolaNote & { transcript?: Array<{ speaker?: { source?: string; diarization_label?: string }; text?: string }> };
-    const lines = (note.transcript ?? []).map((t) => {
-      const who = t.speaker?.diarization_label || (t.speaker?.source === "microphone" ? "Me" : "Speaker");
-      return `${who}: ${(t.text ?? "").trim()}`;
-    });
-    return (note.summary ? `Summary:\n${note.summary}\n\nTranscript:\n` : "") + lines.join("\n");
+    return (await res.json()) as GranolaNote;
   }
 }
 
-/** Whether a note matches a project's scope rules (default: include everything). */
+/** Build the ingestable text: AI notes (high-signal) + the raw spoken transcript. */
+export function buildNoteContent(note: GranolaNote): string {
+  const parts: string[] = [];
+  const ai = note.summary_markdown || note.summary_text;
+  if (ai) parts.push(`## AI Notes\n${ai}`);
+  const lines = (note.transcript ?? [])
+    .map((t) => {
+      const who = t.speaker?.diarization_label || (t.speaker?.source === "microphone" ? "Me" : "Participant");
+      return `${who}: ${(t.text ?? "").trim()}`;
+    })
+    .filter((l) => l.length > 3);
+  if (lines.length) parts.push(`## Transcript\n${lines.join("\n")}`);
+  return parts.join("\n\n");
+}
+
+/** Best occurred-at: scheduled meeting start, else created_at. */
+export function noteOccurredAt(note: GranolaNote): Date | null {
+  const t = note.calendar_event?.scheduled_start_time || note.created_at;
+  return t ? new Date(t) : null;
+}
+
+/** Whether a note (full detail) matches a project's scope rules. Default: include all. */
 export function noteMatchesScope(note: GranolaNote, scope: GranolaScope | undefined | null): boolean {
   if (!scope || scope.mode !== "selective") return true;
-  const hay = `${note.title ?? ""} ${note.summary ?? ""}`.toLowerCase();
+  const hay = `${note.title ?? ""} ${note.summary_text ?? ""} ${note.summary_markdown ?? ""}`.toLowerCase();
   const kw = (scope.keywords ?? []).some((k) => k && hay.includes(k.toLowerCase()));
-  const dom = (scope.ownerDomains ?? []).some((d) => d && (note.owner?.email ?? "").toLowerCase().endsWith(`@${d.toLowerCase().replace(/^@/, "")}`));
-  const folder = (scope.folderIds ?? []).some((f) => f && (note.folder_id === f || note.folderId === f));
+
+  const emails = [
+    note.owner?.email,
+    ...(note.attendees ?? []).map((a) => a.email),
+    ...(note.calendar_event?.invitees ?? []).map((i) => i.email),
+    note.calendar_event?.organiser,
+  ].filter(Boolean).map((e) => (e as string).toLowerCase());
+  const dom = (scope.ownerDomains ?? []).some((d) => {
+    const needle = `@${d.toLowerCase().replace(/^@/, "")}`;
+    return emails.some((e) => e.endsWith(needle));
+  });
+
+  const folders = (note.folder_membership ?? []).map((f) => (typeof f === "string" ? f : f.folder_id || f.id || ""));
+  const folder = (scope.folderIds ?? []).some((f) => f && folders.includes(f));
+
   const picked = (scope.noteIds ?? []).includes(note.id);
   return kw || dom || folder || picked;
 }
