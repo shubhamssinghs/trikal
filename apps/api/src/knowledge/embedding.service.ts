@@ -3,10 +3,11 @@ import { VoyageAIClient } from "voyageai";
 import { SettingsService } from "../settings/settings.service";
 
 const EMBEDDING_MODEL = "voyage-3-lite"; // 512 dims
-// Pack many chunks per request (Voyage allows up to 1000 inputs / ~120K tokens)
-// to minimize request count — the binding constraint on free/low tiers is RPM.
+// Pack many chunks per request (Voyage allows up to 1000 inputs / ~120K tokens).
 const BATCH_SIZE = 128;
-const INTER_BATCH_DELAY_MS = 1500; // gentle spacing to stay under per-minute limits
+// Spacing between batches. Paid Voyage tiers have high RPM, so default to 0
+// (full speed). Set VOYAGE_BATCH_DELAY_MS to throttle on the free tier.
+const INTER_BATCH_DELAY_MS = Number(process.env.VOYAGE_BATCH_DELAY_MS ?? 0);
 const DEV_ORG_ID = "org_dev";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -36,7 +37,7 @@ export class EmbeddingService {
         const msg = err instanceof Error ? err.message : String(err);
         const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("rate");
         if (isRateLimit && i < retries - 1) {
-          const delay = Math.min(15_000 * (i + 1), 60_000); // 15s,30s,45s,60s,60s…
+          const delay = Math.min(3_000 * 2 ** i, 30_000); // 3s,6s,12s,24s,30s…
           this.logger.warn(`Voyage rate limit hit, retrying in ${delay / 1000}s (attempt ${i + 1}/${retries})...`);
           await sleep(delay);
         } else {
