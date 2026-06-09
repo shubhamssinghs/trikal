@@ -1,27 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { Card } from "../ui";
+import { useState, useEffect } from "react";
+import { Check, Loader2, Plug, AlertCircle } from "lucide-react";
+import { Card, Button, inputClass } from "../ui";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 type Conn = { id: string; name: string; desc: string; category: string; logo?: string; color: string };
+type GranolaConn = { connected: boolean; status: string; keyHint: string | null; lastError: string | null };
 
-// Logos pulled from each brand's OWN site / CDN (favicons or official product
-// assets). Ones without a public first-party logo fall back to a brand-coloured
-// monogram, which is also the graceful fallback if an image fails to load.
 const CONNECTORS: Conn[] = [
   { id: "jira", name: "Jira", desc: "Sync issues, create tickets from action items", category: "Tickets & Boards", logo: "https://jira.atlassian.com/favicon.ico", color: "#2684FF" },
   { id: "azure-devops", name: "Azure DevOps", desc: "Sync work items and boards", category: "Tickets & Boards", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/acom_social_icon_azure", color: "#0078D7" },
-  { id: "trello", name: "Trello", desc: "Sync cards and boards", category: "Tickets & Boards", logo: "https://trello.com/favicon.ico", color: "#0079BF" },
   { id: "slack", name: "Slack", desc: "Read channels, draft replies", category: "Communication", logo: "https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png", color: "#4A154B" },
   { id: "teams", name: "Microsoft Teams", desc: "Read messages and channels", category: "Communication", logo: "https://teams.microsoft.com/favicon.ico", color: "#6264A7" },
   { id: "gmail", name: "Gmail", desc: "Read & draft emails", category: "Email", logo: "https://www.gstatic.com/images/branding/product/2x/gmail_48dp.png", color: "#EA4335" },
-  { id: "outlook", name: "Outlook", desc: "Read & draft via Microsoft Graph", category: "Email", logo: "https://cdn-dynmedia-1.microsoft.com/is/content/microsoftcorp/Outlook-Icon-FY26?resMode=sharp2&op_usm=1.5,0.65,15,0&wid=64&hei=64&qlt=100&fit=constrain", color: "#0078D4" },
   { id: "google-calendar", name: "Google Calendar", desc: "Pull upcoming meetings", category: "Calendar", logo: "https://www.gstatic.com/images/branding/product/2x/calendar_48dp.png", color: "#4285F4" },
   { id: "zoom", name: "Zoom", desc: "Meeting recordings & transcripts", category: "Meetings", logo: "https://st1.zoom.us/zoom.ico", color: "#2D8CFF" },
-  { id: "granola", name: "Granola", desc: "Import meeting transcripts", category: "Meetings", logo: "https://www.granola.ai/logos/rebrand/marque.svg", color: "#6366F1" },
   { id: "google-drive", name: "Google Drive", desc: "Sync documents", category: "Docs", logo: "https://www.gstatic.com/images/branding/product/2x/drive_48dp.png", color: "#1FA463" },
-  { id: "sharepoint", name: "SharePoint", desc: "Sync documents & sites", category: "Docs", logo: "https://www.microsoft.com/content/dam/microsoft/bade/images/icons/en-us/456100-icon-sharepoint-17x17.svg", color: "#038387" },
-  { id: "confluence", name: "Confluence", desc: "Sync pages & spaces", category: "Docs", logo: "https://confluence.atlassian.com/favicon.ico", color: "#172B4D" },
 ];
 
 const CATEGORIES = ["Tickets & Boards", "Communication", "Email", "Calendar", "Meetings", "Docs"];
@@ -29,11 +25,7 @@ const CATEGORIES = ["Tickets & Boards", "Communication", "Email", "Calendar", "M
 function Logo({ name, logo, color }: { name: string; logo?: string; color: string }) {
   const [failed, setFailed] = useState(false);
   if (!logo || failed) {
-    return (
-      <div className="grid place-items-center w-10 h-10 rounded-lg text-white font-semibold text-sm shrink-0" style={{ backgroundColor: color }}>
-        {name[0]}
-      </div>
-    );
+    return <div className="grid place-items-center w-10 h-10 rounded-lg text-white font-semibold text-sm shrink-0" style={{ backgroundColor: color }}>{name[0]}</div>;
   }
   return (
     <div className="grid place-items-center w-10 h-10 rounded-lg bg-white border border-border shrink-0 p-1.5">
@@ -43,15 +35,89 @@ function Logo({ name, logo, color }: { name: string; logo?: string; color: strin
   );
 }
 
+function GranolaCard() {
+  const [conn, setConn] = useState<GranolaConn | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState<"connect" | "test" | "disconnect" | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const load = () =>
+    fetch(`${API_BASE}/integrations`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: Array<GranolaConn & { provider: string }>) => setConn(list.find((c) => c.provider === "granola") ?? { connected: false, status: "disconnected", keyHint: null, lastError: null }))
+      .catch(() => setConn({ connected: false, status: "disconnected", keyHint: null, lastError: null }));
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const connect = async () => {
+    if (!apiKey.trim()) return;
+    setBusy("connect"); setMsg(null);
+    const res = await fetch(`${API_BASE}/integrations/granola`, {
+      credentials: "include", method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: apiKey.trim() }),
+    }).then((r) => r.json().then((b) => ({ ok: r.ok, b }))).catch(() => ({ ok: false, b: null }));
+    setBusy(null);
+    if (res.ok && res.b?.testOk !== false) { setApiKey(""); setMsg({ ok: true, text: "Connected to Granola." }); }
+    else setMsg({ ok: false, text: res.b?.testError || res.b?.message || "Could not connect — check the key." });
+    load();
+  };
+
+  const test = async () => {
+    setBusy("test"); setMsg(null);
+    const r = await fetch(`${API_BASE}/integrations/granola/test`, { credentials: "include", method: "POST" }).then((x) => x.json()).catch(() => ({ ok: false }));
+    setBusy(null);
+    setMsg(r.ok ? { ok: true, text: "Connection OK." } : { ok: false, text: r.error || "Connection failed." });
+    load();
+  };
+
+  const disconnect = async () => {
+    setBusy("disconnect");
+    await fetch(`${API_BASE}/integrations/granola`, { credentials: "include", method: "DELETE" }).catch(() => {});
+    setBusy(null); setMsg(null); load();
+  };
+
+  const connected = conn?.connected;
+  return (
+    <Card title="Granola" accent={connected ? "blue" : "default"}
+      action={connected ? <span className="inline-flex items-center gap-1 text-xs text-emerald-400"><Check size={13} /> Connected</span> : null}>
+      <div className="flex items-start gap-3">
+        <Logo name="Granola" logo="https://www.granola.ai/logos/rebrand/marque.svg" color="#6366F1" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted mb-3">
+            Import meeting transcripts via the Granola API. Paste a workspace API key (starts with <span className="text-foreground">grn_</span>) from Granola → Settings → API.
+            Enable it per-project on each project page to sync that project&apos;s meetings into its knowledge base.
+          </p>
+
+          {connected ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="rounded-md border border-border bg-surface-2/60 px-2.5 py-1.5 text-xs text-foreground">Key {conn?.keyHint}</span>
+              <Button variant="secondary" onClick={test} disabled={!!busy}>{busy === "test" ? <Loader2 size={14} className="animate-spin" /> : "Test"}</Button>
+              <Button variant="secondary" onClick={disconnect} disabled={!!busy}>{busy === "disconnect" ? <Loader2 size={14} className="animate-spin" /> : "Disconnect"}</Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input value={apiKey} onChange={(e) => setApiKey(e.target.value)} type="password" placeholder="grn_…" className={inputClass} />
+              <Button onClick={connect} disabled={busy === "connect" || !apiKey.trim()}>
+                {busy === "connect" ? <Loader2 size={14} className="animate-spin" /> : <><Plug size={14} /> Connect</>}
+              </Button>
+            </div>
+          )}
+          {msg && <p className={`text-xs mt-2 inline-flex items-center gap-1 ${msg.ok ? "text-emerald-400" : "text-red-500"}`}>{!msg.ok && <AlertCircle size={12} />}{msg.text}</p>}
+          {conn?.status === "error" && conn.lastError && !msg && <p className="text-xs mt-2 text-red-500">{conn.lastError}</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function IntegrationsSection() {
   return (
     <div className="space-y-5">
+      <GranolaCard />
+
       <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 px-4 py-3">
-        <p className="text-sm text-foreground">Connectors are coming soon.</p>
-        <p className="text-xs text-muted mt-0.5">
-          Each integration uses OAuth and starts read-only — external writes (creating tickets, sending messages)
-          always go through the approval queue.
-        </p>
+        <p className="text-sm text-foreground">More connectors are coming.</p>
+        <p className="text-xs text-muted mt-0.5">Each uses OAuth and starts read-only — external writes (tickets, messages) always go through the approval queue.</p>
       </div>
 
       {CATEGORIES.map((cat) => (
@@ -66,9 +132,7 @@ export function IntegrationsSection() {
                     <p className="text-xs text-muted truncate">{c.desc}</p>
                   </div>
                 </div>
-                <button disabled className="shrink-0 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs text-muted cursor-not-allowed">
-                  Connect
-                </button>
+                <button disabled className="shrink-0 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs text-muted cursor-not-allowed">Connect</button>
               </div>
             ))}
           </div>

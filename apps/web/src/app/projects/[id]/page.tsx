@@ -9,6 +9,7 @@ import { AskProject } from "@/components/ask-project";
 import { MilestonesPanel } from "@/components/milestones-panel";
 import { RisksPanel } from "@/components/risks-panel";
 import { MembersPanel } from "@/components/members-panel";
+import { ProjectIntegrations } from "@/components/project-integrations";
 import { ProjectActions } from "@/components/project-actions";
 import { serverFetch } from "@/lib/api/server";
 
@@ -107,6 +108,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         {/* Sidebar */}
         <aside className="space-y-5">
           <MembersPanel projectId={id} members={members as never} />
+
+          <ProjectIntegrations projectId={id} />
 
           <Card title="Project Info">
             <dl className="space-y-2.5">
