@@ -4,6 +4,7 @@ import { queries } from "@/lib/api/queries";
 import { Shell } from "@/components/shell";
 import { PageHeader, Card, StatusBadge, EmptyState, Button } from "@/components/ui";
 import { BriefingPanel } from "@/components/briefing-panel";
+import { AttentionPanel } from "@/components/attention-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export default async function TodayPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          <AttentionPanel />
           <BriefingPanel />
 
           <Card

@@ -20,6 +20,7 @@ import { AgentModule } from "./agent/agent.module";
 import { IntegrationsModule } from "./integrations/integrations.module";
 import { BriefingModule } from "./briefing/briefing.module";
 import { DocumentsModule } from "./documents/documents.module";
+import { ProactiveModule } from "./proactive/proactive.module";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { DocumentsModule } from "./documents/documents.module";
     IntegrationsModule,
     BriefingModule,
     DocumentsModule,
+    ProactiveModule,
   ],
 })
 export class AppModule {}

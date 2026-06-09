@@ -151,8 +151,34 @@ model Project {
   integrations  ProjectIntegration[]
   briefing      ProjectBriefing?
   documents     ProjectDocument[]
+  insights      ProactiveInsight[]
 
   @@map("projects")
+}
+
+/// Proactive, always-on alerts the system raises about a project without being
+/// asked — overdue milestones, unmitigated high risks, piling approvals, etc.
+/// Detected deterministically on a schedule; dismissible; auto-resolved when the
+/// underlying condition clears. One row per (project, dedupeKey).
+model ProactiveInsight {
+  id              String   @id @default(cuid())
+  organizationId  String
+  projectId       String
+  kind            String   // OVERDUE_MILESTONE | MILESTONE_DUE_SOON | UNMITIGATED_HIGH_RISK | PENDING_APPROVALS | STALE_PROJECT | PROCESSING_STUCK | AT_RISK_STATUS
+  severity        String   @default("medium") // high | medium | low
+  title           String
+  detail          String?
+  suggestedAction String?
+  dedupeKey       String   // stable identity of the underlying condition
+  status          String   @default("OPEN") // OPEN | DISMISSED | DONE
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, dedupeKey])
+  @@index([organizationId, status])
+  @@map("proactive_insights")
 }
 
 model Workstream {
