@@ -146,6 +146,7 @@ model Project {
   aiRuns        AiRun[]
   diagrams      Diagram[]
   agentRuns     AgentRun[]
+  integrations  ProjectIntegration[]
 
   @@map("projects")
 }
@@ -289,12 +290,56 @@ model MeetingTranscript {
   occurredAt     DateTime?
   classification DataClassification @default(INTERNAL)
   processedAt    DateTime?
+  source         String   @default("manual") // manual | granola | …
+  externalId     String?  // provider's id (e.g. Granola note id) for dedupe
   createdAt      DateTime @default(now())
 
   project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   knowledgeItems KnowledgeItem[]
 
+  @@unique([projectId, source, externalId])
   @@map("meeting_transcripts")
+}
+
+// ─── Integrations (connectors) ─────────────────────────────────────────────
+
+/// Org-level connection to an external provider (e.g. Granola). One per provider.
+model Integration {
+  id             String   @id @default(cuid())
+  organizationId String
+  provider       String   // granola | jira | slack | …
+  name           String
+  credentials    Json     // { apiKey: "grn_…" } — masked on read
+  status         String   @default("connected") // connected | error | disconnected
+  lastError      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  projectLinks ProjectIntegration[]
+
+  @@unique([organizationId, provider])
+  @@map("integrations")
+}
+
+/// Per-project link to a connection + the scope rules that map items to the project.
+model ProjectIntegration {
+  id             String    @id @default(cuid())
+  projectId      String
+  integrationId  String
+  provider       String
+  enabled        Boolean   @default(true)
+  scope          Json      @default("{}") // { mode, keywords[], ownerDomains[], folderIds[], noteIds[] }
+  lastSyncedAt   DateTime?
+  lastSyncStatus String?
+  lastSyncCount  Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, integrationId])
+  @@map("project_integrations")
 }
 
 model KnowledgeItem {
