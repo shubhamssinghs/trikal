@@ -26,6 +26,7 @@ export interface GranolaNote extends GranolaNoteSummary {
     invitees?: Array<{ email?: string }>;
     scheduled_start_time?: string;
     scheduled_end_time?: string;
+    calendar_event_id?: string;
   };
   folder_membership?: Array<{ folder_id?: string; id?: string; name?: string } | string>;
   transcript?: GranolaTranscriptItem[];
@@ -88,9 +89,37 @@ export class GranolaClient {
   }
 }
 
-/** Build the ingestable text: AI notes (high-signal) + the raw spoken transcript. */
+/** Structured metadata we persist per meeting (and surface in the dashboard). */
+export function buildNoteMetadata(note: GranolaNote) {
+  const ce = note.calendar_event;
+  return {
+    provider: "granola" as const,
+    webUrl: note.web_url ?? null,
+    organiser: ce?.organiser ?? null,
+    attendees: (note.attendees ?? []).map((a) => ({ name: a.name ?? null, email: a.email ?? null })),
+    invitees: (ce?.invitees ?? []).map((i) => i.email).filter(Boolean),
+    scheduledStart: ce?.scheduled_start_time ?? note.created_at ?? null,
+    scheduledEnd: ce?.scheduled_end_time ?? null,
+    calendarEventId: ce?.calendar_event_id ?? null,
+    createdAt: note.created_at ?? null,
+  };
+}
+
+/**
+ * Build the ingestable text. A short context header (title, date, attendees)
+ * is embedded with the content so the AI can answer "who/when" questions, then
+ * the AI notes (high-signal) and the raw spoken transcript.
+ */
 export function buildNoteContent(note: GranolaNote): string {
   const parts: string[] = [];
+  const m = buildNoteMetadata(note);
+  const header: string[] = [`# ${note.title ?? "Meeting"}`, `Source: Granola meeting`];
+  if (m.scheduledStart) header.push(`When: ${m.scheduledStart}${m.scheduledEnd ? ` – ${m.scheduledEnd}` : ""}`);
+  const people = m.attendees.map((a) => a.name || a.email).filter(Boolean);
+  if (people.length) header.push(`Attendees: ${people.join(", ")}`);
+  if (m.organiser) header.push(`Organiser: ${m.organiser}`);
+  parts.push(header.join("\n"));
+
   const ai = note.summary_markdown || note.summary_text;
   if (ai) parts.push(`## AI Notes\n${ai}`);
   const lines = (note.transcript ?? [])

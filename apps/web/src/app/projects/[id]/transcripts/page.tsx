@@ -1,14 +1,13 @@
-import { FileText, CheckCircle2, Clock } from "lucide-react";
 import { TranscriptUpload } from "@/components/transcript-upload";
 import { KnowledgeSearch } from "@/components/knowledge-search";
+import { TranscriptList } from "@/components/transcript-list";
 import { Shell } from "@/components/shell";
-import { PageHeader, Card, EmptyState } from "@/components/ui";
-import { formatDate } from "@/lib/format";
+import { PageHeader, Card } from "@/components/ui";
 import { serverFetch } from "@/lib/api/server";
 
 export const dynamic = "force-dynamic";
 
-type Transcript = { id: string; title: string; occurredAt: string; processedAt?: string };
+type Transcript = { id: string; title: string; occurredAt: string; processedAt?: string; source?: string; metadata?: Record<string, unknown> };
 
 export default async function TranscriptsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,38 +33,8 @@ export default async function TranscriptsPage({ params }: { params: Promise<{ id
         <KnowledgeSearch projectId={id} />
       </div>
 
-      <Card title={`Uploaded Transcripts (${transcripts.length})`}>
-        {transcripts.length === 0 ? (
-          <EmptyState
-            icon={<FileText size={28} />}
-            title="No transcripts yet"
-            description="Upload your first meeting transcript above to start building this project's knowledge base."
-          />
-        ) : (
-          <div className="space-y-2">
-            {transcripts.map((t) => (
-              <div key={t.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-4 py-3 hover:bg-surface-2/70 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="grid place-items-center w-9 h-9 rounded-lg bg-surface-2 text-muted shrink-0">
-                    <FileText size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
-                    <p className="text-xs text-muted">{formatDate(t.occurredAt)}</p>
-                  </div>
-                </div>
-                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ring-1 ring-inset ${
-                  t.processedAt
-                    ? "bg-emerald-500/15 text-emerald-500 ring-emerald-500/30"
-                    : "bg-surface-2 text-muted ring-border"
-                }`}>
-                  {t.processedAt ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                  {t.processedAt ? "Analysed" : "Pending"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      <Card title={`Meetings & Transcripts (${transcripts.length})`}>
+        <TranscriptList transcripts={transcripts} />
       </Card>
     </Shell>
   );

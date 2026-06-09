@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
-import { GranolaClient, noteMatchesScope, buildNoteContent, noteOccurredAt, type GranolaScope } from "./granola.client";
+import { Prisma } from "@prisma/client";
+import { GranolaClient, noteMatchesScope, buildNoteContent, buildNoteMetadata, noteOccurredAt, type GranolaScope } from "./granola.client";
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000; // poll due projects every 30 min
 const MAX_NOTES_PER_SYNC = 50;
@@ -76,6 +77,7 @@ export class IntegrationSyncService implements OnModuleInit {
             occurredAt: noteOccurredAt(note),
             source: "granola",
             externalId: note.id,
+            metadata: buildNoteMetadata(note) as unknown as Prisma.InputJsonValue,
           },
         });
         await this.knowledge.ingestTranscript(transcript.id, organizationId).catch((e) =>

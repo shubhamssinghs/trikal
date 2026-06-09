@@ -72,6 +72,7 @@ export class TranscriptsService {
       select: {
         id: true, title: true, occurredAt: true, storageKey: true,
         classification: true, processedAt: true, createdAt: true,
+        source: true, metadata: true,
       },
     });
   }

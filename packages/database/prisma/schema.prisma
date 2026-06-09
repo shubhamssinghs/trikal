@@ -292,6 +292,7 @@ model MeetingTranscript {
   processedAt    DateTime?
   source         String   @default("manual") // manual | granola | …
   externalId     String?  // provider's id (e.g. Granola note id) for dedupe
+  metadata       Json?    // provider metadata: attendees, organiser, times, web_url, …
   createdAt      DateTime @default(now())
 
   project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
