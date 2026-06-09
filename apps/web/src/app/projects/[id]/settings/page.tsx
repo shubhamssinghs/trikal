@@ -3,13 +3,14 @@ import { ChevronLeft, Plug, Info } from "lucide-react";
 import { Shell } from "@/components/shell";
 import { PageHeader, Card } from "@/components/ui";
 import { ProjectIntegrations } from "@/components/project-integrations";
+import { ProjectInstructions } from "@/components/project-instructions";
 import { serverFetch } from "@/lib/api/server";
 import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 type Project = {
-  id: string; name: string; description?: string | null; status: string;
+  id: string; name: string; description?: string | null; status: string; aiInstructions?: string | null;
   company?: { name?: string } | null; startDate?: string | null; targetEndDate?: string | null;
 };
 
@@ -56,6 +57,8 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
             ))}
           </dl>
         </Card>
+
+        <ProjectInstructions projectId={id} initial={project.aiInstructions ?? ""} />
 
         <div>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2"><Plug size={15} /> Integrations</h2>

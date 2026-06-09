@@ -48,7 +48,7 @@ export class BriefingService {
   async generate(projectId: string, organizationId: string) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, organizationId },
-      select: { id: true, name: true, description: true },
+      select: { id: true, name: true, description: true, aiInstructions: true },
     });
     if (!project) throw new NotFoundException("Project not found");
 
@@ -71,6 +71,7 @@ export class BriefingService {
 
     const userPrompt = [
       `Project: ${project.name}${project.description ? ` — ${project.description}` : ""}`,
+      project.aiInstructions ? `Project-specific instructions (follow these):\n${project.aiInstructions}` : "",
       milestones.length ? `\nMilestones:\n${milestones.map((m) => `- ${m.name} (${m.status}${m.dueDate ? `, due ${m.dueDate.toISOString().slice(0, 10)}` : ""})`).join("\n")}` : "",
       risks.length ? `\nOpen risks:\n${risks.map((r) => `- ${r.title} [${r.severity}]`).join("\n")}` : "",
       context ? `\nFrom recent meetings & notes:\n${context}` : "\n(No meeting/notes content yet.)",

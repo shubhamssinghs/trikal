@@ -138,7 +138,7 @@ export class AgentRuntimeService {
     const skills = await this.enabledSkills(organizationId);
     const bySlug = new Map(skills.map((sk) => [sk.slug, sk]));
     const project = projectId
-      ? await this.prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { name: true, description: true } })
+      ? await this.prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { name: true, description: true, aiInstructions: true } })
       : null;
 
     const system = [
@@ -147,6 +147,7 @@ export class AgentRuntimeService {
       "Prefer answering from project knowledge. When a diagram would communicate better than prose, create one.",
       "Be concise and cite which skill/source produced information when relevant.",
       project ? `\nCurrent project: ${project.name}${project.description ? ` — ${project.description}` : ""}` : "",
+      project?.aiInstructions ? `\nProject-specific instructions (follow these):\n${project.aiInstructions}` : "",
       conversation?.summary ? `\nEarlier in this conversation (summary):\n${conversation.summary}` : "",
       ...skills.filter((sk) => sk.instructions).map((sk) => `\n[${sk.name}] ${sk.instructions}`),
     ].filter(Boolean).join("\n");

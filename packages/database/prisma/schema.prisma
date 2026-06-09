@@ -125,6 +125,7 @@ model Project {
   programId           String?
   name                String
   description         String?
+  aiInstructions      String?       // project-specific guidance always given to the AI
   status              ProjectStatus @default(ACTIVE)
   startDate           DateTime?
   targetEndDate       DateTime?
