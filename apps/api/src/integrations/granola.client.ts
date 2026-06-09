@@ -62,13 +62,22 @@ export class GranolaClient {
     }
   }
 
-  /** List notes created after `since`, following the cursor (minimal fields). */
-  async listNotes(since?: Date | null, max = 200): Promise<GranolaNoteSummary[]> {
+  /** Folders the user organizes calls into. */
+  async listFolders(): Promise<{ id: string; name: string; parentFolderId: string | null }[]> {
+    const res = await fetch(`${BASE_URL}/folders`, { headers: this.headers });
+    if (!res.ok) throw new Error(`Granola /folders ${res.status}`);
+    const body = (await res.json()) as { folders?: { id: string; name: string; parent_folder_id?: string | null }[] };
+    return (body.folders ?? []).map((f) => ({ id: f.id, name: f.name, parentFolderId: f.parent_folder_id ?? null }));
+  }
+
+  /** List notes created after `since`, following the cursor (optionally scoped to a folder). */
+  async listNotes(since?: Date | null, max = 200, folderId?: string): Promise<GranolaNoteSummary[]> {
     const out: GranolaNoteSummary[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < 25 && out.length < max; page++) {
       const params = new URLSearchParams();
       if (since) params.set("created_after", since.toISOString());
+      if (folderId) params.set("folder_id", folderId);
       if (cursor) params.set("cursor", cursor);
       const res = await fetch(`${BASE_URL}/notes?${params.toString()}`, { headers: this.headers });
       if (!res.ok) throw new Error(`Granola /notes ${res.status}`);

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param } from "@nestjs/common";
+import { Controller, Get, Post, Delete, Body, Param, Query } from "@nestjs/common";
 import { IntegrationsService } from "./integrations.service";
 import { IntegrationSyncService } from "./integration-sync.service";
 import type { GranolaScope } from "./granola.client";
@@ -34,8 +34,13 @@ export class IntegrationsController {
   }
 
   @Get("granola/notes")
-  notes() {
-    return this.integrations.listGranolaNotes(DEV_ORG_ID);
+  notes(@Query("folderId") folderId?: string) {
+    return this.integrations.listGranolaNotes(DEV_ORG_ID, folderId);
+  }
+
+  @Get("granola/folders")
+  folders() {
+    return this.integrations.listGranolaFolders(DEV_ORG_ID);
   }
 
   // ── Per-project links ──────────────────────────────────────────────────────

@@ -64,11 +64,18 @@ export class IntegrationsService {
   }
 
   /** List recent Granola notes (for the per-project mapping picker). */
-  async listGranolaNotes(organizationId: string) {
+  async listGranolaNotes(organizationId: string, folderId?: string) {
     const conn = await this.requireConnection(organizationId);
     const apiKey = (conn.credentials as { apiKey?: string }).apiKey ?? "";
-    const notes = await this.granolaClientFor(apiKey).listNotes(null, 100);
-    return notes.map((n) => ({ id: n.id, title: n.title ?? "Untitled", summary: "", owner: n.owner?.email ?? n.owner?.name ?? "", created: n.created_at ?? null }));
+    const notes = await this.granolaClientFor(apiKey).listNotes(null, 100, folderId);
+    return notes.map((n) => ({ id: n.id, title: n.title ?? "Untitled", owner: n.owner?.email ?? n.owner?.name ?? "", created: n.created_at ?? null }));
+  }
+
+  /** List the user's Granola folders (for folder-based scoping). */
+  async listGranolaFolders(organizationId: string) {
+    const conn = await this.requireConnection(organizationId);
+    const apiKey = (conn.credentials as { apiKey?: string }).apiKey ?? "";
+    return this.granolaClientFor(apiKey).listFolders();
   }
 
   // ── Per-project links ────────────────────────────────────────────────────
