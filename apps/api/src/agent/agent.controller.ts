@@ -9,8 +9,19 @@ export class AgentController {
 
   /** Ask the agent — it decides which skills to use and may chain several. */
   @Post("ask")
-  ask(@Body("question") question: string, @Body("projectId") projectId?: string, @Body("conversationId") conversationId?: string) {
-    return this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null });
+  ask(
+    @Body("question") question: string,
+    @Body("projectId") projectId?: string,
+    @Body("conversationId") conversationId?: string,
+    @Body("mentions") mentions?: { type: string; id: string }[],
+  ) {
+    return this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions });
+  }
+
+  /** Things the chat can @-mention (documents, diagrams, meetings, members). */
+  @Get("mentionables")
+  mentionables(@Query("projectId") projectId: string) {
+    return this.agent.mentionables(DEV_ORG_ID, projectId);
   }
 
   // ── Conversations ──────────────────────────────────────────────────────────

@@ -2,8 +2,27 @@
 
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MermaidBlock, DiagramEmbed } from "./diagram/diagram-embed";
+
+function nodeText(children: React.ReactNode): string {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) return children.map(nodeText).join("");
+  return "";
+}
 
 /** Themed markdown renderer (no typography plugin) — used for AI notes, agent answers, etc. */
+function makeComponents(projectId?: string): Components {
+  return {
+  ...components,
+  code: ({ className, children }) => {
+    const lang = /language-(\w+)/.exec(className || "")?.[1];
+    if (lang === "mermaid") return <MermaidBlock code={nodeText(children)} />;
+    if (lang === "diagram") return <DiagramEmbed diagramId={nodeText(children).trim()} projectId={projectId} />;
+    return <code className="rounded bg-surface-2 px-1 py-0.5 text-[11px] font-mono text-foreground">{children}</code>;
+  },
+  };
+}
+
 const components: Components = {
   h1: ({ children }) => <h1 className="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">{children}</h1>,
   h2: ({ children }) => <h2 className="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">{children}</h2>,
@@ -24,6 +43,6 @@ const components: Components = {
   td: ({ children }) => <td className="border border-border px-2 py-1">{children}</td>,
 };
 
-export function Markdown({ children }: { children: string }) {
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{children}</ReactMarkdown>;
+export function Markdown({ children, projectId }: { children: string; projectId?: string }) {
+  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={makeComponents(projectId)}>{children}</ReactMarkdown>;
 }

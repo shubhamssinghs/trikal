@@ -54,6 +54,19 @@ export const HANDLERS: Record<string, SkillHandler> = {
     };
   },
 
+  // List the project's diagrams so the agent can reference/embed an existing one.
+  "diagram.list": async (_input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context." };
+    const diagrams = await ctx.prisma.diagram.findMany({
+      where: { projectId: ctx.projectId },
+      select: { id: true, title: true, kind: true },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+    if (!diagrams.length) return { text: "No diagrams exist in this project yet. Use create_diagram to make one." };
+    return { text: "Project diagrams (embed one in a document with a ```diagram\\n<id>\\n``` block):\n" + diagrams.map((d) => `- ${d.title} (${d.kind}) — id: ${d.id}`).join("\n") };
+  },
+
   // Draft a project document (markdown) → saved as a draft awaiting approval.
   // Iterates the same document when a documentId is supplied.
   "document.draft": async (input, ctx) => {

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle } from "lucide-react";
+import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X } from "lucide-react";
 import { Markdown } from "./markdown";
+import { DocumentViewer } from "./document-viewer";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -12,6 +13,9 @@ type Step = { id: string; idx: number; type: string; skillSlug?: string | null; 
 type Run = { id: string; goal: string; answer?: string | null; status: string; model?: string | null; createdAt: string; steps: Step[] };
 type ConversationLite = { id: string; title: string; lastMessageAt: string };
 type Conversation = { id: string; title: string; runs: Run[] };
+type Mentionable = { type: string; id: string; label: string; sublabel?: string };
+
+const MENTION_DOT: Record<string, string> = { document: "#f59e0b", diagram: "#6366f1", meeting: "#10b981", member: "#64748b" };
 
 export function ProjectChat({ projectId }: { projectId: string }) {
   const [conversations, setConversations] = useState<ConversationLite[]>([]);
@@ -21,6 +25,10 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<string | null>(null); // optimistic user message
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [mentionables, setMentionables] = useState<Mentionable[]>([]);
+  const [mentions, setMentions] = useState<Mentionable[]>([]);
+  const [mq, setMq] = useState<string | null>(null); // active @-query, or null
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const loadConversations = () =>
@@ -33,16 +41,36 @@ export function ProjectChat({ projectId }: { projectId: string }) {
       .then((c: Conversation | null) => { if (c) setRuns(c.runs ?? []); })
       .catch(() => {});
 
-  useEffect(() => { loadConversations(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId]);
+  useEffect(() => {
+    loadConversations();
+    fetch(`${API_BASE}/agent/mentionables?projectId=${projectId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : [])).then(setMentionables).catch(() => {});
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [projectId]);
   useEffect(() => { if (activeId) loadConversation(activeId); }, [activeId]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [runs, pending]);
 
-  const newChat = () => { setActiveId(null); setRuns([]); setSwitcherOpen(false); };
+  const newChat = () => { setActiveId(null); setRuns([]); setSwitcherOpen(false); setMentions([]); };
+
+  const onInput = (v: string) => {
+    setInput(v);
+    const m = /(?:^|\s)@([\w-]*)$/.exec(v);
+    setMq(m ? m[1].toLowerCase() : null);
+  };
+  const pickMention = (item: Mentionable) => {
+    setInput((prev) => prev.replace(/@([\w-]*)$/, `@${item.label} `));
+    setMentions((prev) => (prev.some((x) => x.id === item.id) ? prev : [...prev, item]));
+    setMq(null);
+  };
+  const mentionMatches = mq !== null
+    ? mentionables.filter((m) => m.label.toLowerCase().includes(mq)).slice(0, 8)
+    : [];
 
   const send = async () => {
     const q = input.trim();
     if (!q || sending) return;
-    setInput(""); setPending(q); setSending(true);
+    const sentMentions = mentions;
+    setInput(""); setPending(q); setSending(true); setMq(null); setMentions([]);
 
     let convId = activeId;
     if (!convId) {
@@ -56,7 +84,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
     await fetch(`${API_BASE}/agent/ask`, {
       credentials: "include", method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q, projectId, conversationId: convId }),
+      body: JSON.stringify({ question: q, projectId, conversationId: convId, mentions: sentMentions.map((m) => ({ type: m.type, id: m.id })) }),
     }).catch(() => {});
 
     setSending(false); setPending(null);
@@ -104,7 +132,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <>
-            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} />)}
+            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} onOpenDoc={setOpenDoc} />)}
             {pending && (
               <div className="space-y-3">
                 <UserBubble text={pending} />
@@ -116,13 +144,40 @@ export function ProjectChat({ projectId }: { projectId: string }) {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-border p-3 shrink-0">
+      <div className="border-t border-border p-3 shrink-0 relative">
+        {/* @-mention dropdown */}
+        {mq !== null && mentionMatches.length > 0 && (
+          <div className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-border bg-surface shadow-xl py-1 max-h-56 overflow-y-auto z-10">
+            <p className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted">Mention</p>
+            {mentionMatches.map((m) => (
+              <button key={`${m.type}:${m.id}`} onClick={() => pickMention(m)} className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-surface-2">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: MENTION_DOT[m.type] ?? "#64748b" }} />
+                <span className="text-sm text-foreground truncate">{m.label}</span>
+                <span className="ml-auto text-[10px] text-muted shrink-0">{m.type}{m.sublabel ? ` · ${m.sublabel}` : ""}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* selected mention chips */}
+        {mentions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {mentions.map((m) => (
+              <span key={`${m.type}:${m.id}`} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-2/50 px-1.5 py-0.5 text-[11px] text-foreground">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: MENTION_DOT[m.type] ?? "#64748b" }} />
+                {m.label}
+                <button onClick={() => setMentions((p) => p.filter((x) => x.id !== m.id))} className="text-muted hover:text-foreground"><X size={11} /></button>
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask the project assistant…  (Enter to send, Shift+Enter for newline)"
+            onChange={(e) => onInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape") setMq(null); if (e.key === "Enter" && !e.shiftKey && mq === null) { e.preventDefault(); send(); } }}
+            placeholder="Ask the project assistant…  (@ to mention a doc, diagram, meeting or person)"
             rows={1}
             className="flex-1 resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-blue-500/50 max-h-32"
           />
@@ -132,6 +187,16 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           </button>
         </div>
       </div>
+
+      {openDoc && (
+        <DocumentViewer
+          projectId={projectId}
+          documentId={openDoc}
+          onClose={() => setOpenDoc(null)}
+          onChanged={() => activeId && loadConversation(activeId)}
+          onAmend={(title) => setInput(`Revise the document "${title}": `)}
+        />
+      )}
     </section>
   );
 }
@@ -144,7 +209,7 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function Turn({ run, projectId }: { run: Run; projectId: string }) {
+function Turn({ run, projectId, onOpenDoc }: { run: Run; projectId: string; onOpenDoc: (id: string) => void }) {
   const artifacts = run.steps.filter((s) => s.type === "tool_result" && s.content?.artifact).map((s) => s.content!.artifact!);
   const traceSteps = run.steps.filter((s) => s.type !== "text");
   return (
@@ -155,14 +220,14 @@ function Turn({ run, projectId }: { run: Run; projectId: string }) {
           {traceSteps.length > 0 && <Trace steps={traceSteps} />}
           {run.answer && (
             <div className="inline-block rounded-2xl rounded-bl-md border border-border bg-surface-2/40 px-3.5 py-2 text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              <Markdown>{run.answer}</Markdown>
+              <Markdown projectId={projectId}>{run.answer}</Markdown>
             </div>
           )}
           {run.status === "failed" && !run.answer && (
             <div className="inline-flex items-center gap-1.5 text-xs text-red-500"><AlertCircle size={13} /> The run failed.</div>
           )}
           {artifacts.map((a, i) => (
-            <ArtifactCard key={i} artifact={a} projectId={projectId} />
+            <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} />
           ))}
         </div>
       </div>
@@ -170,19 +235,20 @@ function Turn({ run, projectId }: { run: Run; projectId: string }) {
   );
 }
 
-function ArtifactCard({ artifact, projectId }: { artifact: Artifact; projectId: string }) {
-  // Documents live in the project's Documents panel (no standalone route) — show an info chip.
-  if (artifact.type === "document") {
+function ArtifactCard({ artifact, projectId, onOpenDoc }: { artifact: Artifact; projectId: string; onOpenDoc: (id: string) => void }) {
+  // Documents open in a viewer right here (approve / amend / export).
+  if (artifact.type === "document" && artifact.id) {
     return (
-      <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-        <Sparkles size={13} /> Drafted “{artifact.label || "document"}” — review &amp; approve in <span className="font-medium">Documents</span>.
-      </div>
+      <button onClick={() => onOpenDoc(artifact.id!)}
+        className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">
+        <FileText size={13} /> Drafted “{artifact.label || "document"}” — open to review &amp; approve <ExternalLink size={12} />
+      </button>
     );
   }
   const href = artifact.href || (artifact.type === "diagram" && artifact.id ? `/projects/${projectId}/diagrams/${artifact.id}` : null);
   if (!href) return null;
   return (
-    <Link href={href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-300 hover:bg-blue-600/20">
+    <Link href={href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
       <Sparkles size={13} /> {artifact.label || "Open artifact"} <ExternalLink size={12} />
     </Link>
   );

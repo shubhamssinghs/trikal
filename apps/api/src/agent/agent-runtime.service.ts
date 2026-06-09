@@ -11,7 +11,8 @@ const MAX_ITERATIONS = 8;
 const DEFAULT_ANTHROPIC = "claude-opus-4-8";
 const DEFAULT_OPENAI = "gpt-4o";
 
-type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null };
+type Mention = { type: string; id: string };
+type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null; mentions?: Mention[] };
 
 const MAX_HISTORY_TURNS = 12; // recent turns sent verbatim; older ones live in the rolling summary
 
@@ -38,7 +39,48 @@ export class AgentRuntimeService {
    * function-calling or Anthropic tool-use); the model decides which enabled
    * skills to call and may chain several. Every step is persisted as a trace.
    */
-  async run({ surface, goal, projectId, organizationId, conversationId }: RunInput) {
+  /** Unified list of things the chat can @-mention (extensible per integration). */
+  async mentionables(organizationId: string, projectId: string) {
+    const [documents, diagrams, meetings, members] = await Promise.all([
+      this.prisma.projectDocument.findMany({ where: { projectId, organizationId }, select: { id: true, title: true, status: true }, orderBy: { updatedAt: "desc" }, take: 50 }),
+      this.prisma.diagram.findMany({ where: { projectId }, select: { id: true, title: true, kind: true }, orderBy: { updatedAt: "desc" }, take: 50 }),
+      this.prisma.meetingTranscript.findMany({ where: { projectId, project: { organizationId } }, select: { id: true, title: true, source: true }, orderBy: { occurredAt: "desc" }, take: 50 }),
+      this.prisma.member.findMany({ where: { projectId }, select: { id: true, name: true, jobRole: { select: { label: true } } }, orderBy: { name: "asc" }, take: 100 }),
+    ]);
+    return [
+      ...documents.map((d) => ({ type: "document", id: d.id, label: d.title, sublabel: d.status })),
+      ...diagrams.map((d) => ({ type: "diagram", id: d.id, label: d.title, sublabel: d.kind })),
+      ...meetings.map((m) => ({ type: "meeting", id: m.id, label: m.title, sublabel: m.source })),
+      ...members.map((m) => ({ type: "member", id: m.id, label: m.name, sublabel: m.jobRole?.label ?? undefined })),
+    ];
+  }
+
+  /** Resolve @-mentions to text the model can use. */
+  private async resolveMentions(mentions: Mention[], projectId: string): Promise<string> {
+    const parts: string[] = [];
+    for (const m of mentions.slice(0, 10)) {
+      if (m.type === "document") {
+        const d = await this.prisma.projectDocument.findFirst({ where: { id: m.id, projectId } });
+        if (d) parts.push(`Document "${d.title}" (id: ${d.id}):\n${d.content.slice(0, 4000)}`);
+      } else if (m.type === "diagram") {
+        const d = await this.prisma.diagram.findFirst({ where: { id: m.id, projectId } });
+        if (d) {
+          const s = d.schemaJson as { mermaid?: string; nodes?: { label?: string }[]; edges?: unknown[] };
+          const summary = s?.mermaid ? `mermaid:\n${s.mermaid}` : `nodes: ${(s?.nodes ?? []).map((n) => n.label).filter(Boolean).join(", ")}`;
+          parts.push(`Diagram "${d.title}" (${d.kind}, id: ${d.id}) — embed with a \`\`\`diagram ${d.id}\`\`\` block. ${summary}`.slice(0, 2000));
+        }
+      } else if (m.type === "meeting") {
+        const t = await this.prisma.meetingTranscript.findFirst({ where: { id: m.id, projectId } });
+        if (t) parts.push(`Meeting "${t.title}":\n${t.rawContent.slice(0, 4000)}`);
+      } else if (m.type === "member") {
+        const mem = await this.prisma.member.findFirst({ where: { id: m.id, projectId }, include: { jobRole: true } });
+        if (mem) parts.push(`Person: ${mem.name}${mem.jobRole?.label ? `, ${mem.jobRole.label}` : ""}${mem.email ? ` <${mem.email}>` : ""}`);
+      }
+    }
+    return parts.length ? `\n\n[Referenced items the user @-mentioned — use these directly]\n${parts.join("\n\n")}` : "";
+  }
+
+  async run({ surface, goal, projectId, organizationId, conversationId, mentions }: RunInput) {
     const s = await this.settings.resolve(organizationId);
     const provider = s.llmProvider === "openai" ? "openai" : "anthropic";
     const apiKey = provider === "openai" ? s.openaiApiKey : s.anthropicApiKey;
@@ -99,6 +141,11 @@ export class AgentRuntimeService {
     const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams };
     const artifacts: unknown[] = [];
 
+    // Inline any @-mentioned content into the message the model actually sees
+    // (run.goal stays the original text shown in the chat).
+    const referenced = mentions?.length && projectId ? await this.resolveMentions(mentions, projectId) : "";
+    const effectiveGoal = goal + referenced;
+
     // Execute one tool call (shared by both providers): approval gate → handler.
     // Returns text for the model + an optional artifact (surfaced in the chat).
     const executeTool = async (slug: string, input: Record<string, unknown>): Promise<{ text: string; artifact?: unknown }> => {
@@ -134,10 +181,10 @@ export class AgentRuntimeService {
 
     try {
       if (provider === "openai") {
-        const r = await this.loopOpenAI({ apiKey, model, system, goal, history, skills, bySlug, step, executeTool });
+        const r = await this.loopOpenAI({ apiKey, model, system, goal: effectiveGoal, history, skills, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       } else {
-        const r = await this.loopAnthropic({ apiKey, model, system, goal, history, skills, bySlug, step, executeTool });
+        const r = await this.loopAnthropic({ apiKey, model, system, goal: effectiveGoal, history, skills, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       }
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed", answer, tokensIn, tokensOut } });
