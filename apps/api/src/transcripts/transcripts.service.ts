@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaClient, DataClassification } from "@prisma/client";
 import { StorageService } from "../storage/storage.service";
 import { ProcessingService } from "../processing/processing.service";
@@ -6,6 +6,8 @@ import { CreateTranscriptDto } from "./dto/create-transcript.dto";
 
 @Injectable()
 export class TranscriptsService {
+  private readonly logger = new Logger(TranscriptsService.name);
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly storage: StorageService,
@@ -42,7 +44,7 @@ export class TranscriptsService {
     if (!project) throw new NotFoundException("Project not found");
 
     // Extract text content from the file
-    const rawContent = this.extractText(data.file);
+    const rawContent = await this.extractText(data.file);
 
     // Upload file to MinIO
     const storageKey = `transcripts/${data.projectId}/${Date.now()}-${data.file.originalname}`;
@@ -63,14 +65,66 @@ export class TranscriptsService {
     return transcript;
   }
 
-  private extractText(file: Express.Multer.File): string {
-    // For TXT files, decode buffer directly
-    if (file.mimetype === "text/plain") {
-      return file.buffer.toString("utf-8");
+  private async extractText(file: Express.Multer.File): Promise<string> {
+    return this.extractFromBuffer(file.buffer, file.originalname ?? "", file.mimetype);
+  }
+
+  /** Extract plain text from a file buffer by type (PDF/DOCX/text). */
+  private async extractFromBuffer(buffer: Buffer, filename: string, mimetype?: string): Promise<string> {
+    const name = filename.toLowerCase();
+    const isPdf = mimetype === "application/pdf" || name.endsWith(".pdf");
+    const isDocx =
+      mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      name.endsWith(".docx");
+
+    try {
+      if (isPdf) {
+        // pdf-parse is CommonJS; require keeps it out of the ESM type surface.
+        const pdfParse = require("pdf-parse") as (b: Buffer) => Promise<{ text: string }>;
+        const { text } = await pdfParse(buffer);
+        return this.cleanExtracted(text) || `[No selectable text found in ${filename} — it may be a scanned image PDF.]`;
+      }
+      if (isDocx) {
+        const mammoth = require("mammoth") as { extractRawText(o: { buffer: Buffer }): Promise<{ value: string }> };
+        const { value } = await mammoth.extractRawText({ buffer });
+        return this.cleanExtracted(value) || `[No text found in ${filename}.]`;
+      }
+    } catch (e) {
+      this.logger.error(`Text extraction failed for ${filename}: ${e instanceof Error ? e.message : e}`);
+      return `[Could not extract text from ${filename}. The file is stored; paste the text manually to analyse it.]`;
     }
-    // For PDF/DOCX: store filename note, actual parsing can be added later
-    // In production, use pdf-parse or mammoth for extraction
-    return `[File uploaded: ${file.originalname}]\n\nNote: Full text extraction for PDF/DOCX requires additional processing. The file has been stored in MinIO. Paste the transcript text manually or use the text upload option for AI analysis.`;
+
+    // Default: treat as UTF-8 text (covers text/plain and unknown types).
+    return buffer.toString("utf-8");
+  }
+
+  /**
+   * Re-extract a previously uploaded file from storage and re-run the pipeline.
+   * Used to recover transcripts uploaded before real PDF/DOCX parsing existed
+   * (their rawContent is just the placeholder note).
+   */
+  async reextract(id: string, organizationId: string) {
+    const t = await this.prisma.meetingTranscript.findFirst({ where: { id, project: { organizationId } } });
+    if (!t) throw new NotFoundException("Transcript not found");
+    if (!t.storageKey) throw new NotFoundException("This transcript has no stored file to re-extract (it was pasted text).");
+
+    const buffer = await this.storage.getObject(t.storageKey);
+    if (!buffer) throw new NotFoundException("Stored file could not be retrieved.");
+
+    const filename = t.storageKey.split("/").pop() ?? t.title;
+    const rawContent = await this.extractFromBuffer(buffer, filename);
+
+    // Replace content and clear prior knowledge so re-ingest re-chunks the real text.
+    await this.prisma.knowledgeItem.deleteMany({ where: { transcriptId: id } });
+    await this.prisma.meetingTranscript.update({ where: { id }, data: { rawContent, processedAt: null } });
+
+    void this.processing.process(id, organizationId);
+    return { ok: true, chars: rawContent.length };
+  }
+
+  /** Tidy extracted text: normalise newlines, collapse runaway blank lines. */
+  private cleanExtracted(s: string): string {
+    return (s ?? "").replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   }
 
   findByProject(projectId: string, organizationId: string) {

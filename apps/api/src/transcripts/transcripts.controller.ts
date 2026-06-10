@@ -53,6 +53,12 @@ export class TranscriptsController {
     return this.transcriptsService.getDownloadUrl(id, DEV_ORG_ID);
   }
 
+  /** Re-extract a stored PDF/DOCX and re-run analysis (recovers old placeholder uploads). */
+  @Post(":id/reextract")
+  reextract(@Param("id") id: string) {
+    return this.transcriptsService.reextract(id, DEV_ORG_ID);
+  }
+
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.transcriptsService.remove(id, DEV_ORG_ID);

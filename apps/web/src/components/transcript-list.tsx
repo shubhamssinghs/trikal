@@ -43,6 +43,19 @@ export function TranscriptList({ transcripts }: { transcripts: Item[] }) {
     await fetch(`${API_BASE}/transcripts/${id}`, { credentials: "include", method: "DELETE" }).catch(() => {});
   };
 
+  // Re-parse a stored PDF/DOCX (recovers files uploaded before text extraction existed),
+  // then poll until analysis completes and refresh the modal + row status.
+  const reextract = async (id: string) => {
+    await fetch(`${API_BASE}/transcripts/${id}/reextract`, { credentials: "include", method: "POST" }).catch(() => {});
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const d = await fetch(`${API_BASE}/transcripts/${id}`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!d) continue;
+      setOpen((cur) => (cur?.id === id ? d : cur));
+      if (d.processedAt) { setItems((prev) => prev.map((x) => (x.id === id ? { ...x, processedAt: d.processedAt } : x))); break; }
+    }
+  };
+
   if (items.length === 0) {
     return <EmptyState icon={<FileText size={28} />} title="No transcripts yet" description="Upload a transcript above, or enable Granola on this project to sync meetings automatically." />;
   }
@@ -71,16 +84,19 @@ export function TranscriptList({ transcripts }: { transcripts: Item[] }) {
         ))}
       </div>
 
-      {open && <DetailModal detail={open} loading={loading} onClose={() => setOpen(null)} onDelete={() => remove(open.id)} />}
+      {open && <DetailModal detail={open} loading={loading} onClose={() => setOpen(null)} onDelete={() => remove(open.id)} onReextract={() => reextract(open.id)} />}
     </>
   );
 }
 
-function DetailModal({ detail, loading, onClose, onDelete }: { detail: Detail; loading: boolean; onClose: () => void; onDelete: () => void }) {
+function DetailModal({ detail, loading, onClose, onDelete, onReextract }: { detail: Detail; loading: boolean; onClose: () => void; onDelete: () => void; onReextract: () => void }) {
   const m = detail.metadata ?? {};
   // rawContent is "# title\nheader…\n\n## AI Notes\n…\n\n## Transcript\n…"
   const aiNotes = detail.rawContent?.split("## AI Notes")[1]?.split("## Transcript")[0]?.trim();
   const transcript = detail.rawContent?.split("## Transcript")[1]?.trim();
+  // True for files uploaded before real PDF/DOCX text extraction existed.
+  const needsExtract = /\[File uploaded:|Full text extraction for PDF\/DOCX|Could not extract text from|No selectable text found/.test(detail.rawContent ?? "");
+  const [extracting, setExtracting] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-[fadeIn_120ms_ease-out]" onClick={onClose}>
@@ -107,6 +123,17 @@ function DetailModal({ detail, loading, onClose, onDelete }: { detail: Detail; l
             <div className="flex items-center gap-2 text-sm text-muted"><Loader2 size={14} className="animate-spin" /> Loading…</div>
           ) : (
             <>
+              {needsExtract && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <p className="text-xs text-foreground">This file’s text wasn’t extracted when it was uploaded, so it hasn’t been analysed. Extract it now to pull the real content into the knowledge base.</p>
+                  <button
+                    onClick={async () => { setExtracting(true); await onReextract(); setExtracting(false); }}
+                    disabled={extracting}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-500 disabled:opacity-60 px-3 py-1.5 text-xs font-medium text-white">
+                    {extracting ? <><Loader2 size={12} className="animate-spin" /> Extracting & analysing…</> : <><FileText size={12} /> Extract & analyse</>}
+                  </button>
+                </div>
+              )}
               {m.attendees && m.attendees.length > 0 && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5 flex items-center gap-1"><Users size={12} /> Attendees</p>
