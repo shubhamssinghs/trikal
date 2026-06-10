@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2 } from "lucide-react";
+import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2, BookOpen, Globe } from "lucide-react";
 import { Markdown } from "./markdown";
 import { DocumentViewer } from "./document-viewer";
 import { DiagramModal } from "./diagram/diagram-modal";
@@ -10,7 +10,8 @@ import { DiagramModal } from "./diagram/diagram-modal";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 type Artifact = { type?: string; id?: string; label?: string; href?: string };
-type Step = { id?: string; idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: { text?: string; input?: unknown; artifact?: Artifact; error?: string } | null };
+type Citation = { n: number; kind: "knowledge" | "web"; title: string; sourceType?: string; sourceId?: string; href?: string };
+type Step = { id?: string; idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: { text?: string; input?: unknown; artifact?: Artifact; error?: string; citations?: Citation[] } | null };
 type Run = { id: string; goal: string; answer?: string | null; status: string; model?: string | null; createdAt: string; steps: Step[] };
 type ConversationLite = { id: string; title: string; lastMessageAt: string };
 type Conversation = { id: string; title: string; runs: Run[] };
@@ -268,7 +269,17 @@ function UserBubble({ text }: { text: string }) {
 
 function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {
   const artifacts = run.steps.filter((s) => s.type === "tool_result" && s.content?.artifact).map((s) => s.content!.artifact!);
-  const traceSteps = run.steps.filter((s) => s.type !== "text");
+  const traceSteps = run.steps.filter((s) => s.type !== "text" && s.type !== "sources");
+  const citations = run.steps.find((s) => s.type === "sources")?.content?.citations ?? [];
+  const usedKb = run.steps.some((s) => s.type === "tool_call" && s.skillSlug === "search_project_knowledge") || citations.some((c) => c.kind === "knowledge");
+  const usedWeb = run.steps.some((s) => s.type === "tool_call" && (s.skillSlug ?? "").startsWith("tavily")) || citations.some((c) => c.kind === "web");
+
+  // Make inline [n] citations clickable — link to the matching source below.
+  const citedNums = new Set(citations.map((c) => c.n));
+  const answer = run.answer && citedNums.size
+    ? run.answer.replace(/\[(\d+)\](?!\()/g, (m, d) => (citedNums.has(Number(d)) ? `[[${d}]](#src-${run.id}-${d})` : m))
+    : run.answer;
+
   return (
     <div className="space-y-3">
       <UserBubble text={run.goal} />
@@ -277,8 +288,11 @@ function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectI
           {traceSteps.length > 0 && <Trace steps={traceSteps} />}
           {run.answer && (
             <div className="inline-block rounded-2xl rounded-bl-md border border-border bg-surface-2/40 px-3.5 py-2 text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              <Markdown projectId={projectId}>{run.answer}</Markdown>
+              <Markdown projectId={projectId}>{answer!}</Markdown>
             </div>
+          )}
+          {(usedKb || usedWeb || citations.length > 0) && (
+            <SourceFooter runId={run.id} projectId={projectId} citations={citations} usedKb={usedKb} usedWeb={usedWeb} />
           )}
           {run.status === "failed" && !run.answer && (
             <div className="inline-flex items-center gap-1.5 text-xs text-red-500"><AlertCircle size={13} /> The run failed.</div>
@@ -292,6 +306,50 @@ function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectI
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SourceFooter({ runId, projectId, citations, usedKb, usedWeb }: { runId: string; projectId: string; citations: Citation[]; usedKb: boolean; usedWeb: boolean }) {
+  return (
+    <div className="pt-0.5">
+      {/* "Answered using" indicator */}
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+        <span>Answered using:</span>
+        {usedKb && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-300">
+            <BookOpen size={11} /> Project knowledge
+          </span>
+        )}
+        {usedWeb && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-blue-600 dark:text-blue-300">
+            <Globe size={11} /> Web search
+          </span>
+        )}
+        {!usedKb && !usedWeb && <span className="italic">general knowledge</span>}
+      </div>
+
+      {citations.length > 0 && (
+        <div className="mt-1.5 space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Sources</p>
+          {citations.map((c) => (
+            <div key={c.n} id={`src-${runId}-${c.n}`} className="flex items-start gap-1.5 text-xs scroll-mt-20">
+              <span className="text-muted shrink-0">[{c.n}]</span>
+              {c.kind === "web" && c.href ? (
+                <a href={c.href} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1 min-w-0">
+                  <span className="truncate">{c.title}</span><ExternalLink size={10} className="shrink-0" />
+                </a>
+              ) : c.sourceType === "transcript" ? (
+                <Link href={`/projects/${projectId}/transcripts`} className="text-foreground hover:text-blue-400 min-w-0">
+                  <span className="truncate">{c.title}</span> <span className="text-muted">· meeting</span>
+                </Link>
+              ) : (
+                <span className="text-foreground min-w-0"><span className="truncate">{c.title}</span> {c.sourceType && <span className="text-muted">· {c.sourceType}</span>}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

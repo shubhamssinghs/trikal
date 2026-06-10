@@ -3,6 +3,16 @@ import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
 import { CalendarService } from "../integrations/calendar.service";
 
+/** A source the agent grounded on, surfaced to the user as a numbered citation. */
+export interface Citation {
+  n: number;
+  kind: "knowledge" | "web";
+  title: string;
+  sourceType?: string;
+  sourceId?: string;
+  href?: string;
+}
+
 /** Context passed to every skill handler. */
 export interface SkillContext {
   projectId?: string | null;
@@ -11,6 +21,8 @@ export interface SkillContext {
   knowledge: KnowledgeService;
   diagrams: DiagramsService;
   calendar: CalendarService;
+  /** Register a source for citation; returns its global [n]. Dedupes by source. */
+  cite?: (c: Omit<Citation, "n">) => number;
 }
 
 /** A handler returns text for the model + an optional artifact surfaced in the UI. */
@@ -36,7 +48,15 @@ export const HANDLERS: Record<string, SkillHandler> = {
       return { text: `No results in the project knowledge base for "${query}". Tell the user the project's documents don't cover this; you may then answer from general knowledge but must label it as general (not from this project).` };
     }
     const sources = hits
-      .map((h, i) => `[${i + 1}] (${h.source?.title ?? "source"}) ${h.content}`)
+      .map((h) => {
+        const title = h.source?.title ?? "source";
+        // Global, deduped citation number so the same document keeps one [n]
+        // across multiple searches in a run.
+        const n = ctx.cite
+          ? ctx.cite({ kind: "knowledge", title, sourceType: h.source?.sourceType, sourceId: h.source?.id })
+          : 0;
+        return `[${n}] (${title}) ${h.content}`;
+      })
       .join("\n\n")
       .slice(0, 8000);
     return {

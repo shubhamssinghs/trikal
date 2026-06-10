@@ -7,7 +7,7 @@ import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
 import { CalendarService } from "../integrations/calendar.service";
 import { McpService, type McpToolDef } from "../mcp/mcp.service";
-import { HANDLERS, type SkillContext } from "./skill-handlers";
+import { HANDLERS, type SkillContext, type Citation } from "./skill-handlers";
 
 const MAX_ITERATIONS = 8;
 const DEFAULT_ANTHROPIC = "claude-opus-4-8";
@@ -220,7 +220,20 @@ export class AgentRuntimeService {
       ...skills.filter((sk) => sk.instructions).map((sk) => `\n[${sk.name}] ${sk.instructions}`),
     ].filter(Boolean).join("\n");
 
-    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams, calendar: this.calendar };
+    // Citation registry — sources the agent grounds on, surfaced to the user.
+    const citations: Citation[] = [];
+    const citeKey = (c: Pick<Citation, "kind" | "href" | "sourceId" | "title">) =>
+      c.kind === "web" ? `web:${c.href}` : `kb:${c.sourceId ?? c.title}`;
+    const cite = (c: Omit<Citation, "n">): number => {
+      const key = citeKey(c);
+      const found = citations.find((x) => citeKey(x) === key);
+      if (found) return found.n;
+      const n = citations.length + 1;
+      citations.push({ n, ...c });
+      return n;
+    };
+
+    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams, calendar: this.calendar, cite };
     const artifacts: unknown[] = [];
 
     // Inline any @-mentioned content into the message the model actually sees
@@ -234,6 +247,13 @@ export class AgentRuntimeService {
       // MCP-provided tools (web search, etc.) route to the MCP server, not skills.
       if (mcpToolNames.has(slug)) {
         const text = await this.mcp.callTool(organizationId, slug, input);
+        // Register the web pages it surfaced as citations.
+        const urls = Array.from(new Set(text.match(/https?:\/\/[^\s)\]"']+/g) ?? [])).slice(0, 8);
+        for (const u of urls) {
+          let host = u;
+          try { host = new URL(u).hostname.replace(/^www\./, ""); } catch { /* keep raw */ }
+          cite({ kind: "web", title: host, href: u });
+        }
         return { text };
       }
       const skill = bySlug.get(slug);
@@ -274,6 +294,9 @@ export class AgentRuntimeService {
         const r = await this.loopAnthropic({ apiKey, model, system, goal: effectiveGoal, history, skills, mcpTools, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       }
+      // Surface the sources the agent grounded on (persisted as a step so it
+      // reloads with the run; the UI renders citations + a source indicator).
+      if (citations.length) await step("sources", { content: { citations } });
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed", answer, tokensIn, tokensOut } });
       if (conversation) {
         await this.prisma.conversation.update({
