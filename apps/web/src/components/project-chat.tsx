@@ -131,21 +131,23 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
   const activeTitle = conversations.find((c) => c.id === activeId)?.title;
 
-  // Every artifact created across this conversation's runs → the right-pane file list.
+  // Every previewable artifact created across this conversation → the right-pane file list.
+  // (milestones / risks / recommendations / skills are confirmations, not files.)
+  const PREVIEWABLE = useMemo(() => new Set(["document", "chart", "table", "sheet", "slides", "diagram"]), []);
   const files = useMemo<ViewerItem[]>(() => {
     const out: ViewerItem[] = [];
     const seen = new Set<string>();
     for (const run of runs) {
       for (const s of run.steps) {
         const a = s.content?.artifact;
-        if (s.type === "tool_result" && a?.id && a?.type) {
+        if (s.type === "tool_result" && a?.id && a?.type && PREVIEWABLE.has(a.type)) {
           const k = `${a.type}:${a.id}`;
           if (!seen.has(k)) { seen.add(k); out.push(a); }
         }
       }
     }
     return out;
-  }, [runs]);
+  }, [runs, PREVIEWABLE]);
 
   // Auto-open the newest file as it's created; keep the user's pick otherwise.
   useEffect(() => {
@@ -326,8 +328,12 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
+const PREVIEWABLE_TYPES = new Set(["document", "chart", "table", "sheet", "slides", "diagram"]);
+
 function Turn({ run, projectId, onOpen }: { run: Run; projectId: string; onOpen: (it: ViewerItem) => void }) {
-  const artifacts = run.steps.filter((s) => s.type === "tool_result" && s.content?.artifact).map((s) => s.content!.artifact!);
+  const artifacts = run.steps
+    .filter((s) => s.type === "tool_result" && s.content?.artifact && PREVIEWABLE_TYPES.has(s.content.artifact.type ?? ""))
+    .map((s) => s.content!.artifact!);
   const traceSteps = run.steps.filter((s) => s.type !== "text" && s.type !== "sources");
   const citations = run.steps.find((s) => s.type === "sources")?.content?.citations ?? [];
   const usedKb = run.steps.some((s) => s.type === "tool_call" && s.skillSlug === "search_project_knowledge") || citations.some((c) => c.kind === "knowledge");
