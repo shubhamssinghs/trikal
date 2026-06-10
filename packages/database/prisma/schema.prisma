@@ -156,8 +156,26 @@ model Project {
   briefing      ProjectBriefing?
   documents     ProjectDocument[]
   insights      ProactiveInsight[]
+  charts        Chart[]
 
   @@map("projects")
+}
+
+/// A data visualization (bar/line/area/pie) the AI generates and can embed in
+/// documents and chat via a ```chart <id>``` block — the chart analogue of Diagram.
+model Chart {
+  id             String   @id @default(cuid())
+  projectId      String?
+  organizationId String?
+  title          String
+  type           String   @default("bar") // bar | line | area | pie | doughnut
+  spec           Json     // { type, title, labels, series:[{label,data,color?}], stacked?, valueLabel? }
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("charts")
 }
 
 /// Proactive, always-on alerts the system raises about a project without being

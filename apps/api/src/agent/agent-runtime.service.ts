@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { SettingsService } from "../settings/settings.service";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
+import { ChartsService } from "../charts/charts.service";
 import { CalendarService } from "../integrations/calendar.service";
 import { McpService, type McpToolDef } from "../mcp/mcp.service";
 import { HANDLERS, type SkillContext, type Citation } from "./skill-handlers";
@@ -32,6 +33,7 @@ export class AgentRuntimeService {
     private readonly settings: SettingsService,
     private readonly knowledge: KnowledgeService,
     private readonly diagrams: DiagramsService,
+    private readonly charts: ChartsService,
     private readonly calendar: CalendarService,
     private readonly mcp: McpService,
   ) {}
@@ -233,7 +235,7 @@ export class AgentRuntimeService {
       return n;
     };
 
-    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams, calendar: this.calendar, cite };
+    const ctx: SkillContext = { projectId, organizationId, prisma: this.prisma, knowledge: this.knowledge, diagrams: this.diagrams, charts: this.charts, calendar: this.calendar, cite };
     const artifacts: unknown[] = [];
 
     // Inline any @-mentioned content into the message the model actually sees

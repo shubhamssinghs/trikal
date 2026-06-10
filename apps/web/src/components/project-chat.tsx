@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2, BookOpen, Globe } from "lucide-react";
 import { Markdown } from "./markdown";
+import { ChartEmbed } from "./chart/chart-embed";
 import { DocumentViewer } from "./document-viewer";
 import { DiagramModal } from "./diagram/diagram-modal";
 
@@ -439,6 +440,10 @@ function ArtifactCard({ artifact, projectId, onOpenDoc, onOpenDiagram }: { artif
         <FileText size={13} /> <span className="font-medium">Document:</span> “{artifact.label || "document"}” — open to review &amp; approve <ExternalLink size={12} />
       </button>
     );
+  }
+  // Charts render inline right in the chat.
+  if (artifact.type === "chart" && artifact.id) {
+    return <div className="w-full min-w-[280px] sm:min-w-[420px]"><ChartEmbed chartId={artifact.id} /></div>;
   }
   // Diagrams open in a preview modal (don't leave the chat).
   if (artifact.type === "diagram" && artifact.id) {

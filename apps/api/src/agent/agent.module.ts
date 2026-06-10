@@ -8,9 +8,10 @@ import { DiagramsModule } from "../diagrams/diagrams.module";
 import { AiModule } from "../ai/ai.module";
 import { IntegrationsModule } from "../integrations/integrations.module";
 import { McpModule } from "../mcp/mcp.module";
+import { ChartsModule } from "../charts/charts.module";
 
 @Module({
-  imports: [KnowledgeModule, DiagramsModule, AiModule, IntegrationsModule, McpModule],
+  imports: [KnowledgeModule, DiagramsModule, AiModule, IntegrationsModule, McpModule, ChartsModule],
   controllers: [AgentController, SkillsController],
   providers: [AgentRuntimeService, SkillsService],
   exports: [AgentRuntimeService],

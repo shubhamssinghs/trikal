@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
+import { ChartsService, type ChartSpec } from "../charts/charts.service";
 import { CalendarService } from "../integrations/calendar.service";
 
 /** A source the agent grounded on, surfaced to the user as a numbered citation. */
@@ -22,6 +23,7 @@ export interface SkillContext {
   prisma: PrismaClient;
   knowledge: KnowledgeService;
   diagrams: DiagramsService;
+  charts: ChartsService;
   calendar: CalendarService;
   /** Register a source for citation; returns its global [n]. Dedupes by source. */
   cite?: (c: Omit<Citation, "n">) => number;
@@ -158,6 +160,27 @@ export const HANDLERS: Record<string, SkillHandler> = {
           others.map((s) => fmt(s.e)).join("\n")
         : "");
     return { text };
+  },
+
+  // Generate a data visualization (chart/graph) and save it. Embed it in a
+  // document or chat reply with a ```chart\n<id>\n``` block (like diagrams).
+  "chart.create": async (input, ctx) => {
+    const spec: Partial<ChartSpec> = {
+      type: input.type as ChartSpec["type"],
+      title: typeof input.title === "string" ? input.title : "Chart",
+      labels: Array.isArray(input.labels) ? (input.labels as unknown[]).map(String) : [],
+      series: Array.isArray(input.series) ? (input.series as ChartSpec["series"]) : [],
+      stacked: Boolean(input.stacked),
+      valueLabel: typeof input.valueLabel === "string" ? input.valueLabel : undefined,
+    };
+    if (!spec.labels?.length || !spec.series?.length) {
+      return { text: "A chart needs `labels` (categories) and at least one `series` with numeric `data`. Provide those and call create_chart again." };
+    }
+    const chart = await ctx.charts.create(ctx.organizationId, { projectId: ctx.projectId ?? null, spec });
+    return {
+      text: `Created a ${chart.type} chart "${chart.title}" (id: ${chart.id}). Embed it by writing a fenced \`\`\`chart block whose only content is the id: ${chart.id}`,
+      artifact: { type: "chart", id: chart.id, label: chart.title },
+    };
   },
 
   // ── Write actions: internal project mutations the agent can perform directly ──
