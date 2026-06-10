@@ -15,7 +15,11 @@ const MODELS: Record<string, { id: string; label: string }[]> = {
   openai: [
     { id: "gpt-4o", label: "GPT-4o" },
     { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    { id: "gpt-4.1", label: "GPT-4.1" },
+    { id: "gpt-4.1-mini", label: "GPT-4.1 mini" },
     { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
+    { id: "o4-mini", label: "o4-mini (reasoning)" },
+    { id: "o3", label: "o3 (reasoning)" },
   ],
 };
 
@@ -25,6 +29,8 @@ export function AiSection({ settings, onChange }: { settings: Settings; onChange
   const [anthropicKey, setAnthropicKey] = useState(settings.anthropicApiKey);
   const [openaiKey, setOpenaiKey] = useState(settings.openaiApiKey);
   const [voyageKey, setVoyageKey] = useState(settings.voyageApiKey);
+  const [tavilyKey, setTavilyKey] = useState(settings.tavilyApiKey);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(settings.webSearchEnabled);
   const [temperature, setTemperature] = useState(settings.temperature);
   const [maxTokens, setMaxTokens] = useState(settings.maxTokens);
   const [chunkSize, setChunkSize] = useState(settings.chunkSize);
@@ -44,10 +50,12 @@ export function AiSection({ settings, onChange }: { settings: Settings; onChange
       const patch: Record<string, unknown> = {
         llmProvider: provider, llmModel: model,
         temperature, maxTokens, chunkSize, chunkOverlap, retrievalTopK,
+        webSearchEnabled,
       };
       if (!anthropicKey.includes("•")) patch.anthropicApiKey = anthropicKey;
       if (!openaiKey.includes("•")) patch.openaiApiKey = openaiKey;
       if (!voyageKey.includes("•")) patch.voyageApiKey = voyageKey;
+      if (!tavilyKey.includes("•")) patch.tavilyApiKey = tavilyKey;
       const updated = await saveSettings(patch);
       onChange(updated as Settings);
       setStatus("saved");
@@ -78,6 +86,24 @@ export function AiSection({ settings, onChange }: { settings: Settings; onChange
           <KeyField label="OpenAI API Key" value={openaiKey} onChange={setOpenaiKey} configured={settings.openaiConfigured} hint="platform.openai.com → API Keys" />
           <KeyField label="Voyage AI Key (embeddings)" value={voyageKey} onChange={setVoyageKey} configured={settings.voyageConfigured} hint="dash.voyageai.com → API Keys" />
         </div>
+      </Card>
+
+      <Card title="Web Search">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0">
+            <p className="text-sm text-foreground">Let the agent search the web</p>
+            <p className="text-xs text-muted mt-0.5">Via the Tavily MCP server. The agent uses it for current/external facts that aren’t in the project knowledge base — and still searches the project first for project-specific questions. Works on any model.</p>
+          </div>
+          <button type="button" onClick={() => setWebSearchEnabled((v) => !v)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${webSearchEnabled ? "bg-blue-600" : "bg-surface-2 border border-border"}`}
+            aria-pressed={webSearchEnabled}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${webSearchEnabled ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        <KeyField label="Tavily API Key" value={tavilyKey} onChange={setTavilyKey} configured={settings.tavilyConfigured} hint="app.tavily.com → API Keys (free tier available)" />
+        {webSearchEnabled && !settings.tavilyConfigured && !tavilyKey && (
+          <p className="text-xs text-amber-400 mt-2">Add a Tavily API key for web search to actually work.</p>
+        )}
       </Card>
 
       <Card title="Generation">

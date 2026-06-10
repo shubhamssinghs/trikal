@@ -21,6 +21,7 @@ export type Settings = Record<string, unknown> & {
   llmProvider: string; llmModel: string;
   anthropicApiKey: string; openaiApiKey: string; voyageApiKey: string;
   anthropicConfigured: boolean; openaiConfigured: boolean; voyageConfigured: boolean;
+  tavilyApiKey: string; tavilyConfigured: boolean; webSearchEnabled: boolean;
   embeddingModel: string; chunkSize: number; chunkOverlap: number;
   retrievalTopK: number; temperature: number; maxTokens: number;
   timezone: string; dateFormat: string; defaultTheme: string;

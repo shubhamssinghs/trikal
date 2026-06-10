@@ -57,6 +57,10 @@ model AppSettings {
   openaiApiKey    String?
   voyageApiKey    String?
 
+  // Web search via Tavily MCP server (agent tool)
+  tavilyApiKey     String?
+  webSearchEnabled Boolean @default(false)
+
   // AI tuning
   embeddingModel  String   @default("voyage-3-lite")
   chunkSize       Int      @default(800)

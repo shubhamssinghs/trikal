@@ -13,6 +13,8 @@ export interface ResolvedSettings {
   retrievalTopK: number;
   temperature: number;
   maxTokens: number;
+  tavilyApiKey: string | null;
+  webSearchEnabled: boolean;
 }
 
 const MASK = "••••••••";
@@ -57,6 +59,8 @@ export class SettingsService {
       retrievalTopK: s.retrievalTopK,
       temperature: s.temperature,
       maxTokens: s.maxTokens,
+      tavilyApiKey: s.tavilyApiKey ?? process.env.TAVILY_API_KEY ?? null,
+      webSearchEnabled: s.webSearchEnabled,
     };
   }
 
@@ -74,6 +78,9 @@ export class SettingsService {
       anthropicConfigured: Boolean(s.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY),
       openaiConfigured: Boolean(s.openaiApiKey ?? process.env.OPENAI_API_KEY),
       voyageConfigured: Boolean(s.voyageApiKey ?? process.env.VOYAGE_API_KEY),
+      tavilyApiKey: maskKey(s.tavilyApiKey),
+      tavilyConfigured: Boolean(s.tavilyApiKey ?? process.env.TAVILY_API_KEY),
+      webSearchEnabled: s.webSearchEnabled,
       embeddingModel: s.embeddingModel,
       chunkSize: s.chunkSize,
       chunkOverlap: s.chunkOverlap,
@@ -121,6 +128,10 @@ export class SettingsService {
     if (!isMasked(data.anthropicApiKey as string)) update.anthropicApiKey = data.anthropicApiKey as string;
     if (!isMasked(data.openaiApiKey as string)) update.openaiApiKey = data.openaiApiKey as string;
     if (!isMasked(data.voyageApiKey as string)) update.voyageApiKey = data.voyageApiKey as string;
+    if (!isMasked(data.tavilyApiKey as string)) update.tavilyApiKey = data.tavilyApiKey as string;
+
+    // toggles
+    if (typeof data.webSearchEnabled === "boolean") update.webSearchEnabled = data.webSearchEnabled;
 
     await this.prisma.appSettings.update({ where: { organizationId }, data: update });
 

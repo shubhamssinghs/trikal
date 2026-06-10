@@ -6,6 +6,7 @@ import { SettingsService } from "../settings/settings.service";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
 import { CalendarService } from "../integrations/calendar.service";
+import { McpService, type McpToolDef } from "../mcp/mcp.service";
 import { HANDLERS, type SkillContext } from "./skill-handlers";
 
 const MAX_ITERATIONS = 8;
@@ -32,6 +33,7 @@ export class AgentRuntimeService {
     private readonly knowledge: KnowledgeService,
     private readonly diagrams: DiagramsService,
     private readonly calendar: CalendarService,
+    private readonly mcp: McpService,
   ) {}
 
   private enabledSkills(organizationId: string): Promise<Skill[]> {
@@ -184,6 +186,9 @@ export class AgentRuntimeService {
 
     const skills = await this.enabledSkills(organizationId);
     const bySlug = new Map(skills.map((sk) => [sk.slug, sk]));
+    // External tools from MCP servers (e.g. Tavily web search), when enabled.
+    const mcpTools = await this.mcp.toolsFor(organizationId).catch(() => [] as McpToolDef[]);
+    const mcpToolNames = new Set(mcpTools.map((t) => t.name));
     const project = projectId
       ? await this.prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { name: true, description: true, aiInstructions: true } })
       : null;
@@ -202,6 +207,9 @@ export class AgentRuntimeService {
         : "",
       project
         ? "3) If the search returns nothing relevant, say plainly that the project's knowledge base doesn't cover it. Then, if you can, answer from general knowledge — but clearly label that part as general knowledge, not something from this project. Use a web search tool for this if one is available and the question needs current/external facts."
+        : "",
+      mcpTools.length
+        ? `A web search tool is available (${mcpTools.map((t) => t.name).join(", ")}). Use it for current events or external facts that are NOT in the project's knowledge base — but search the project knowledge base first for anything project-specific. Cite the web sources you used.`
         : "",
       "Make it obvious in your answer what came from the project's knowledge base versus your general knowledge. When a diagram would communicate better than prose, create one.",
       "You can act on the project: create milestones and risks, update the project's status, and log actions. Use these when the user asks you to — internal changes apply immediately; external sends still require approval.",
@@ -223,6 +231,11 @@ export class AgentRuntimeService {
     // Execute one tool call (shared by both providers): approval gate → handler.
     // Returns text for the model + an optional artifact (surfaced in the chat).
     const executeTool = async (slug: string, input: Record<string, unknown>): Promise<{ text: string; artifact?: unknown }> => {
+      // MCP-provided tools (web search, etc.) route to the MCP server, not skills.
+      if (mcpToolNames.has(slug)) {
+        const text = await this.mcp.callTool(organizationId, slug, input);
+        return { text };
+      }
       const skill = bySlug.get(slug);
       if (skill?.externalAction) {
         if (projectId) {
@@ -255,10 +268,10 @@ export class AgentRuntimeService {
 
     try {
       if (provider === "openai") {
-        const r = await this.loopOpenAI({ apiKey, model, system, goal: effectiveGoal, history, skills, bySlug, step, executeTool });
+        const r = await this.loopOpenAI({ apiKey, model, system, goal: effectiveGoal, history, skills, mcpTools, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       } else {
-        const r = await this.loopAnthropic({ apiKey, model, system, goal: effectiveGoal, history, skills, bySlug, step, executeTool });
+        const r = await this.loopAnthropic({ apiKey, model, system, goal: effectiveGoal, history, skills, mcpTools, bySlug, step, executeTool });
         ({ answer, tokensIn, tokensOut } = r);
       }
       await this.prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed", answer, tokensIn, tokensOut } });
@@ -289,7 +302,10 @@ export class AgentRuntimeService {
   // ── Anthropic tool-use loop ───────────────────────────────────────────────
   private async loopAnthropic(p: LoopParams) {
     const client = new Anthropic({ apiKey: p.apiKey });
-    const tools = p.skills.map((sk) => ({ name: sk.slug, description: sk.description, input_schema: sk.inputSchema as Record<string, unknown> }));
+    const tools = [
+      ...p.skills.map((sk) => ({ name: sk.slug, description: sk.description, input_schema: sk.inputSchema as Record<string, unknown> })),
+      ...p.mcpTools.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema })),
+    ];
     const messages: Anthropic.MessageParam[] = [...p.history.map((h) => ({ role: h.role, content: h.content })), { role: "user", content: p.goal }];
     let answer = "", tokensIn = 0, tokensOut = 0;
 
@@ -323,7 +339,10 @@ export class AgentRuntimeService {
   // ── OpenAI function-calling loop ──────────────────────────────────────────
   private async loopOpenAI(p: LoopParams) {
     const client = new OpenAI({ apiKey: p.apiKey });
-    const tools = p.skills.map((sk) => ({ type: "function" as const, function: { name: sk.slug, description: sk.description, parameters: sk.inputSchema as Record<string, unknown> } }));
+    const tools = [
+      ...p.skills.map((sk) => ({ type: "function" as const, function: { name: sk.slug, description: sk.description, parameters: sk.inputSchema as Record<string, unknown> } })),
+      ...p.mcpTools.map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
+    ];
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: p.system },
       ...p.history.map((h) => ({ role: h.role, content: h.content })),
@@ -439,6 +458,7 @@ interface LoopParams {
   goal: string;
   history: HistoryTurn[];
   skills: Skill[];
+  mcpTools: McpToolDef[];
   bySlug: Map<string, Skill>;
   step: StepFn;
   executeTool: (slug: string, input: Record<string, unknown>) => Promise<{ text: string; artifact?: unknown }>;
