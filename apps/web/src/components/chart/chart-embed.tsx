@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement,
   PointElement, ArcElement, Title, Tooltip, Legend, Filler,
@@ -15,8 +15,9 @@ type ChartRow = { id: string; title: string; type: string; spec: ChartSpec };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-/** Render a saved chart by id (referenced in markdown via a ```chart <id>``` block). */
-export function ChartEmbed({ chartId }: { chartId: string }) {
+/** Render a saved chart by id (referenced in markdown via a ```chart <id>``` block).
+ *  Memoized + stable config so typing in the chat input doesn't re-animate it. */
+function ChartEmbedBase({ chartId }: { chartId: string }) {
   const [chart, setChart] = useState<ChartRow | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [dark, setDark] = useState(false);
@@ -38,7 +39,12 @@ export function ChartEmbed({ chartId }: { chartId: string }) {
     return <div className="my-2 grid h-20 place-items-center rounded-xl border border-border bg-surface-2/20 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><BarChart3 size={13} /> Chart unavailable</span></div>;
   }
 
-  const cfg = buildChartConfig(chart.spec, { dark });
+  return <ChartCanvas spec={chart.spec} dark={dark} />;
+}
+
+/** Isolated so the heavy config build + Chart only recompute when data/theme change. */
+const ChartCanvas = memo(function ChartCanvas({ spec, dark }: { spec: ChartSpec; dark: boolean }) {
+  const cfg = useMemo(() => buildChartConfig(spec, { dark }), [spec, dark]);
   return (
     <div className="my-3 rounded-xl border border-border bg-surface p-3">
       <div className="h-72">
@@ -46,4 +52,6 @@ export function ChartEmbed({ chartId }: { chartId: string }) {
       </div>
     </div>
   );
-}
+});
+
+export const ChartEmbed = memo(ChartEmbedBase);
