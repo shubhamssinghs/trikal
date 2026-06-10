@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun } from "docx";
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun, Table, TableRow, TableCell, WidthType } from "docx";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const MAX_W = 600; // px — fit the page width
@@ -73,8 +73,21 @@ function lineToParagraph(line: string): Paragraph {
 }
 
 /** Build a .docx Blob from markdown — embedding mermaid/diagram blocks as images. */
+async function artifactTable(id: string): Promise<{ table?: Table; title?: string }> {
+  try {
+    const a = await fetch(`${API_BASE}/artifacts/${id}`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null));
+    const spec = a?.spec;
+    if (!spec?.columns?.length) return { title: a?.title };
+    const headerCells = spec.columns.map((c: string) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: String(c), bold: true })] })] }));
+    const bodyRows = (spec.rows ?? []).map((row: unknown[]) =>
+      new TableRow({ children: spec.columns.map((_: string, ci: number) => new TableCell({ children: [new Paragraph(String(row[ci] ?? ""))] })) }),
+    );
+    return { table: new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: headerCells }), ...bodyRows] }), title: a?.title };
+  } catch { return {}; }
+}
+
 export async function markdownToDocx(title: string, content: string, projectId: string): Promise<Blob> {
-  const children: Paragraph[] = [new Paragraph({ text: title, heading: HeadingLevel.TITLE })];
+  const children: (Paragraph | Table)[] = [new Paragraph({ text: title, heading: HeadingLevel.TITLE })];
   const lines = content.split("\n");
   let i = 0;
   while (i < lines.length) {
@@ -95,6 +108,11 @@ export async function markdownToDocx(title: string, content: string, projectId: 
       } else if (lang === "chart") {
         const png = await chartToPng(code.trim());
         children.push(png.png ? imageParagraph(png.png) : new Paragraph({ children: [new TextRun({ text: `[Chart: ${png.title ?? code} — view in app]`, italics: true })] }));
+      } else if (lang === "table") {
+        const t = await artifactTable(code.trim());
+        children.push(t.table ?? new Paragraph({ children: [new TextRun({ text: `[Table: ${t.title ?? code} — view in app]`, italics: true })] }));
+      } else if (lang === "sheet" || lang === "slides") {
+        children.push(new Paragraph({ children: [new TextRun({ text: `[${lang === "sheet" ? "Spreadsheet" : "Slide deck"} — download separately from the app]`, italics: true })] }));
       } else {
         body.forEach((l) => children.push(new Paragraph({ children: [new TextRun({ text: l, font: "Consolas" })] })));
       }

@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { KnowledgeService } from "../knowledge/knowledge.service";
 import { DiagramsService } from "../diagrams/diagrams.service";
 import { ChartsService, type ChartSpec } from "../charts/charts.service";
+import { ArtifactsService } from "../artifacts/artifacts.service";
 import { CalendarService } from "../integrations/calendar.service";
 
 /** A source the agent grounded on, surfaced to the user as a numbered citation. */
@@ -24,6 +25,7 @@ export interface SkillContext {
   knowledge: KnowledgeService;
   diagrams: DiagramsService;
   charts: ChartsService;
+  artifacts: ArtifactsService;
   calendar: CalendarService;
   /** Register a source for citation; returns its global [n]. Dedupes by source. */
   cite?: (c: Omit<Citation, "n">) => number;
@@ -181,6 +183,42 @@ export const HANDLERS: Record<string, SkillHandler> = {
       text: `Created a ${chart.type} chart "${chart.title}" (id: ${chart.id}). Embed it by writing a fenced \`\`\`chart block whose only content is the id: ${chart.id}`,
       artifact: { type: "chart", id: chart.id, label: chart.title },
     };
+  },
+
+  // Styled data table — renders inline and exports as a real Word table in .docx.
+  "table.create": async (input, ctx) => {
+    const columns = Array.isArray(input.columns) ? (input.columns as unknown[]).map(String) : [];
+    const rows = Array.isArray(input.rows) ? (input.rows as unknown[]) : [];
+    if (!columns.length || !rows.length) return { text: "A table needs `columns` and `rows`. Provide both and call create_table again." };
+    const a = await ctx.artifacts.create(ctx.organizationId, {
+      projectId: ctx.projectId ?? null, type: "table",
+      spec: { title: input.title ?? "Table", columns, rows, note: input.note },
+    });
+    return { text: `Created table "${a.title}" (id: ${a.id}). Embed it with a fenced \`\`\`table block whose only content is the id: ${a.id}`, artifact: { type: "table", id: a.id, label: a.title } };
+  },
+
+  // Slide deck — renders as a deck and exports to PowerPoint (.pptx). Slides may
+  // reference an existing chart (chartId) or diagram (diagramId) to embed it.
+  "slides.create": async (input, ctx) => {
+    const slides = Array.isArray(input.slides) ? (input.slides as unknown[]) : [];
+    if (!slides.length) return { text: "A deck needs at least one slide in `slides`. Each slide has a title and bullets (and optionally chartId/diagramId)." };
+    const a = await ctx.artifacts.create(ctx.organizationId, {
+      projectId: ctx.projectId ?? null, type: "slides",
+      spec: { title: input.title ?? "Presentation", slides },
+    });
+    return { text: `Created a ${slides.length}-slide deck "${a.title}" (id: ${a.id}). Embed it with a fenced \`\`\`slides block whose only content is the id: ${a.id}. The user can present it or export to PowerPoint.`, artifact: { type: "slides", id: a.id, label: a.title } };
+  },
+
+  // Spreadsheet — renders as a grid preview and downloads as Excel (.xlsx).
+  "sheet.create": async (input, ctx) => {
+    const columns = Array.isArray(input.columns) ? (input.columns as unknown[]).map(String) : [];
+    const rows = Array.isArray(input.rows) ? (input.rows as unknown[]) : [];
+    if (!columns.length || !rows.length) return { text: "A spreadsheet needs `columns` and `rows`. Provide both and call create_spreadsheet again." };
+    const a = await ctx.artifacts.create(ctx.organizationId, {
+      projectId: ctx.projectId ?? null, type: "sheet",
+      spec: { title: input.title ?? "Spreadsheet", columns, rows },
+    });
+    return { text: `Created spreadsheet "${a.title}" (id: ${a.id}). Embed it with a fenced \`\`\`sheet block whose only content is the id: ${a.id}. The user can view it and download .xlsx.`, artifact: { type: "sheet", id: a.id, label: a.title } };
   },
 
   // ── Write actions: internal project mutations the agent can perform directly ──

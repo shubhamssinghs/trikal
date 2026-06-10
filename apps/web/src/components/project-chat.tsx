@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2, BookOpen, Globe } from "lucide-react";
+import { Send, Plus, MessageSquare, ChevronDown, Loader2, Sparkles, Wrench, Brain, ExternalLink, AlertCircle, FileText, X, Trash2, BookOpen, Globe, BarChart3, Table2, Sheet, Presentation } from "lucide-react";
 import { Markdown } from "./markdown";
-import { ChartEmbed } from "./chart/chart-embed";
-import { DocumentViewer } from "./document-viewer";
-import { DiagramModal } from "./diagram/diagram-modal";
+import { ArtifactPane, type ViewerItem } from "./artifact/artifact-pane";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -29,8 +27,8 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [pending, setPending] = useState<string | null>(null); // optimistic user message
   const [live, setLive] = useState<{ steps: Step[]; answer: string } | null>(null); // streaming turn
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [openDoc, setOpenDoc] = useState<string | null>(null);
-  const [openDiagram, setOpenDiagram] = useState<{ id: string; label?: string } | null>(null);
+  const [viewer, setViewer] = useState<ViewerItem | null>(null);
+  const lastFileKey = useRef<string | null>(null);
   const [mentionables, setMentionables] = useState<Mentionable[]>([]);
   const [mentions, setMentions] = useState<Mentionable[]>([]);
   const [mq, setMq] = useState<string | null>(null); // active @-query, or null
@@ -133,8 +131,33 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
   const activeTitle = conversations.find((c) => c.id === activeId)?.title;
 
+  // Every artifact created across this conversation's runs → the right-pane file list.
+  const files = useMemo<ViewerItem[]>(() => {
+    const out: ViewerItem[] = [];
+    const seen = new Set<string>();
+    for (const run of runs) {
+      for (const s of run.steps) {
+        const a = s.content?.artifact;
+        if (s.type === "tool_result" && a?.id && a?.type) {
+          const k = `${a.type}:${a.id}`;
+          if (!seen.has(k)) { seen.add(k); out.push(a); }
+        }
+      }
+    }
+    return out;
+  }, [runs]);
+
+  // Auto-open the newest file as it's created; keep the user's pick otherwise.
+  useEffect(() => {
+    if (!files.length) return;
+    const newest = files[files.length - 1];
+    const key = `${newest.type}:${newest.id}`;
+    if (key !== lastFileKey.current) { lastFileKey.current = key; setViewer(newest); }
+  }, [files]);
+
   return (
-    <section className="flex flex-col rounded-xl border border-border bg-surface shadow-sm h-[82vh] min-h-[520px] overflow-hidden">
+    <div className="flex h-full overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+    <section className="flex flex-col min-w-0 flex-1 lg:max-w-[58%] border-r border-border">
       {/* Header: thread switcher */}
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 shrink-0">
         <div className="relative">
@@ -175,7 +198,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <>
-            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} onOpenDoc={setOpenDoc} onOpenDiagram={setOpenDiagram} />)}
+            {runs.map((run) => <Turn key={run.id} run={run} projectId={projectId} onOpen={setViewer} />)}
             {pending && (
               <div className="space-y-3">
                 <UserBubble text={pending} />
@@ -244,19 +267,19 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {openDoc && (
-        <DocumentViewer
-          projectId={projectId}
-          documentId={openDoc}
-          onClose={() => setOpenDoc(null)}
-          onChanged={() => activeId && loadConversation(activeId)}
-          onAmend={(title) => setInput(`Revise the document "${title}": `)}
-        />
-      )}
-      {openDiagram && (
-        <DiagramModal projectId={projectId} diagramId={openDiagram.id} label={openDiagram.label} onClose={() => setOpenDiagram(null)} />
-      )}
     </section>
+
+    {/* Right pane: files the assistant created (docs, charts, tables, sheets, decks, diagrams). */}
+    <aside className="hidden lg:flex flex-col w-[42%] bg-surface-2/10">
+      <ArtifactPane
+        items={files}
+        selected={viewer}
+        onSelect={setViewer}
+        projectId={projectId}
+        onChanged={() => { if (activeId) loadConversation(activeId); }}
+      />
+    </aside>
+    </div>
   );
 }
 
@@ -268,7 +291,7 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {
+function Turn({ run, projectId, onOpen }: { run: Run; projectId: string; onOpen: (it: ViewerItem) => void }) {
   const artifacts = run.steps.filter((s) => s.type === "tool_result" && s.content?.artifact).map((s) => s.content!.artifact!);
   const traceSteps = run.steps.filter((s) => s.type !== "text" && s.type !== "sources");
   const citations = run.steps.find((s) => s.type === "sources")?.content?.citations ?? [];
@@ -301,7 +324,7 @@ function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectI
           {artifacts.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {artifacts.map((a, i) => (
-                <ArtifactCard key={i} artifact={a} projectId={projectId} onOpenDoc={onOpenDoc} onOpenDiagram={onOpenDiagram} />
+                <ArtifactCard key={i} artifact={a} onOpen={onOpen} />
               ))}
             </div>
           )}
@@ -431,34 +454,28 @@ function splitAround(full: string, snippet: string): { before: string; match: st
   return { before: full.slice(0, start), match: full.slice(start, end), after: full.slice(end) };
 }
 
-function ArtifactCard({ artifact, projectId, onOpenDoc, onOpenDiagram }: { artifact: Artifact; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {
-  // Documents open in a viewer right here (approve / amend / export).
-  if (artifact.type === "document" && artifact.id) {
-    return (
-      <button onClick={() => onOpenDoc(artifact.id!)}
-        className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">
-        <FileText size={13} /> <span className="font-medium">Document:</span> “{artifact.label || "document"}” — open to review &amp; approve <ExternalLink size={12} />
-      </button>
-    );
+const ARTIFACT_META: Record<string, { Icon: React.ComponentType<{ size?: number; className?: string }>; label: string; cls: string }> = {
+  document: { Icon: FileText, label: "Document", cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20" },
+  chart: { Icon: BarChart3, label: "Chart", cls: "border-blue-500/30 bg-blue-600/10 text-blue-600 dark:text-blue-300 hover:bg-blue-600/20" },
+  table: { Icon: Table2, label: "Table", cls: "border-blue-500/30 bg-blue-600/10 text-blue-600 dark:text-blue-300 hover:bg-blue-600/20" },
+  sheet: { Icon: Sheet, label: "Spreadsheet", cls: "border-emerald-500/30 bg-emerald-600/10 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-600/20" },
+  slides: { Icon: Presentation, label: "Slides", cls: "border-blue-500/30 bg-blue-600/10 text-blue-600 dark:text-blue-300 hover:bg-blue-600/20" },
+  diagram: { Icon: Sparkles, label: "Diagram", cls: "border-blue-500/30 bg-blue-600/10 text-blue-600 dark:text-blue-300 hover:bg-blue-600/20" },
+};
+
+/** A compact chip that opens the created file in the right-hand viewer pane. */
+function ArtifactCard({ artifact, onOpen }: { artifact: Artifact; onOpen: (it: ViewerItem) => void }) {
+  if (!artifact.id || !artifact.type) {
+    if (!artifact.href) return null;
+    return <Link href={artifact.href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20"><Sparkles size={13} /> {artifact.label || "Open"} <ExternalLink size={12} /></Link>;
   }
-  // Charts render inline right in the chat.
-  if (artifact.type === "chart" && artifact.id) {
-    return <div className="w-full min-w-[280px] sm:min-w-[420px]"><ChartEmbed chartId={artifact.id} /></div>;
-  }
-  // Diagrams open in a preview modal (don't leave the chat).
-  if (artifact.type === "diagram" && artifact.id) {
-    return (
-      <button onClick={() => onOpenDiagram({ id: artifact.id!, label: artifact.label })}
-        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
-        <Sparkles size={13} /> <span className="font-medium">Diagram:</span> {artifact.label || "view"} <ExternalLink size={12} />
-      </button>
-    );
-  }
-  if (!artifact.href) return null;
+  const meta = ARTIFACT_META[artifact.type] ?? { Icon: FileText, label: artifact.type, cls: "border-border bg-surface-2/50 text-foreground hover:bg-surface-2" };
+  const { Icon } = meta;
   return (
-    <Link href={artifact.href} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-600/20">
-      <Sparkles size={13} /> {artifact.label || "Open artifact"} <ExternalLink size={12} />
-    </Link>
+    <button onClick={() => onOpen(artifact)} title="Open in viewer"
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${meta.cls}`}>
+      <Icon size={13} /> <span className="font-medium">{meta.label}:</span> <span className="max-w-[200px] truncate">{artifact.label || "open"}</span> <ExternalLink size={12} className="opacity-60" />
+    </button>
   );
 }
 

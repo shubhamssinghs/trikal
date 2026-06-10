@@ -22,6 +22,7 @@ import { BriefingModule } from "./briefing/briefing.module";
 import { DocumentsModule } from "./documents/documents.module";
 import { ProactiveModule } from "./proactive/proactive.module";
 import { ChartsModule } from "./charts/charts.module";
+import { ArtifactsModule } from "./artifacts/artifacts.module";
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { ChartsModule } from "./charts/charts.module";
     DocumentsModule,
     ProactiveModule,
     ChartsModule,
+    ArtifactsModule,
   ],
 })
 export class AppModule {}

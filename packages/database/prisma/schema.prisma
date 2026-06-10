@@ -157,8 +157,28 @@ model Project {
   documents     ProjectDocument[]
   insights      ProactiveInsight[]
   charts        Chart[]
+  artifacts     Artifact[]
 
   @@map("projects")
+}
+
+/// Generic generated artifact the AI produces and embeds in docs/chat — a styled
+/// table, a slide deck, or a spreadsheet. Rendered inline via a ```<type> <id>```
+/// block and exportable (.pptx / .xlsx / Word table), the same pattern as Chart.
+model Artifact {
+  id             String   @id @default(cuid())
+  projectId      String?
+  organizationId String?
+  type           String   // "table" | "slides" | "sheet"
+  title          String
+  spec           Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("artifacts")
 }
 
 /// A data visualization (bar/line/area/pie) the AI generates and can embed in

@@ -4,6 +4,9 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MermaidBlock, DiagramEmbed } from "./diagram/diagram-embed";
 import { ChartEmbed } from "./chart/chart-embed";
+import { TableEmbed } from "./artifact/table-embed";
+import { SheetEmbed } from "./artifact/sheet-embed";
+import { SlidesEmbed } from "./artifact/slides-embed";
 
 function nodeText(children: React.ReactNode): string {
   if (typeof children === "string") return children;
@@ -20,6 +23,9 @@ function makeComponents(projectId?: string): Components {
     if (lang === "mermaid") return <MermaidBlock code={nodeText(children)} />;
     if (lang === "diagram") return <DiagramEmbed diagramId={nodeText(children).trim()} projectId={projectId} />;
     if (lang === "chart") return <ChartEmbed chartId={nodeText(children).trim()} />;
+    if (lang === "table") return <TableEmbed artifactId={nodeText(children).trim()} />;
+    if (lang === "sheet") return <SheetEmbed artifactId={nodeText(children).trim()} />;
+    if (lang === "slides") return <SlidesEmbed artifactId={nodeText(children).trim()} projectId={projectId} />;
     return <code className="rounded bg-surface-2 px-1 py-0.5 text-[11px] font-mono text-foreground">{children}</code>;
   },
   };
