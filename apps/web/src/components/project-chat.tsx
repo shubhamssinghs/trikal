@@ -10,7 +10,7 @@ import { DiagramModal } from "./diagram/diagram-modal";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 type Artifact = { type?: string; id?: string; label?: string; href?: string };
-type Citation = { n: number; kind: "knowledge" | "web"; title: string; sourceType?: string; sourceId?: string; href?: string };
+type Citation = { n: number; kind: "knowledge" | "web"; title: string; sourceType?: string; sourceId?: string; transcriptId?: string | null; snippet?: string; href?: string };
 type Step = { id?: string; idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: { text?: string; input?: unknown; artifact?: Artifact; error?: string; citations?: Citation[] } | null };
 type Run = { id: string; goal: string; answer?: string | null; status: string; model?: string | null; createdAt: string; steps: Step[] };
 type ConversationLite = { id: string; title: string; lastMessageAt: string };
@@ -311,6 +311,7 @@ function Turn({ run, projectId, onOpenDoc, onOpenDiagram }: { run: Run; projectI
 }
 
 function SourceFooter({ runId, projectId, citations, usedKb, usedWeb }: { runId: string; projectId: string; citations: Citation[]; usedKb: boolean; usedWeb: boolean }) {
+  const [openSrc, setOpenSrc] = useState<Citation | null>(null);
   return (
     <div className="pt-0.5">
       {/* "Answered using" indicator */}
@@ -339,19 +340,94 @@ function SourceFooter({ runId, projectId, citations, usedKb, usedWeb }: { runId:
                 <a href={c.href} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1 min-w-0">
                   <span className="truncate">{c.title}</span><ExternalLink size={10} className="shrink-0" />
                 </a>
-              ) : c.sourceType === "transcript" ? (
-                <Link href={`/projects/${projectId}/transcripts`} className="text-foreground hover:text-blue-400 min-w-0">
-                  <span className="truncate">{c.title}</span> <span className="text-muted">· meeting</span>
-                </Link>
               ) : (
-                <span className="text-foreground min-w-0"><span className="truncate">{c.title}</span> {c.sourceType && <span className="text-muted">· {c.sourceType}</span>}</span>
+                <button onClick={() => setOpenSrc(c)} className="text-left text-foreground hover:text-blue-400 min-w-0 inline-flex items-center gap-1">
+                  <span className="truncate">{c.title}</span>
+                  {c.sourceType && <span className="text-muted shrink-0">· {c.sourceType}</span>}
+                </button>
               )}
             </div>
           ))}
         </div>
       )}
+
+      {openSrc && <SourceModal projectId={projectId} citation={openSrc} onClose={() => setOpenSrc(null)} />}
     </div>
   );
+}
+
+function SourceModal({ projectId, citation, onClose }: { projectId: string; citation: Citation; onClose: () => void }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const passageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!citation.transcriptId) { setLoading(false); return; }
+    let cancelled = false;
+    fetch(`${API_BASE}/transcripts/${citation.transcriptId}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled) setContent(d?.rawContent ?? null); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [citation.transcriptId]);
+
+  // Split the full text around the cited passage so we can highlight it inline.
+  const snippet = (citation.snippet ?? "").trim();
+  const parts = content && snippet ? splitAround(content, snippet) : null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3.5 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-foreground truncate">[{citation.n}] {citation.title}</h3>
+            {citation.sourceType && <p className="text-[11px] text-muted mt-0.5">{citation.sourceType} · from the project knowledge base</p>}
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-foreground shrink-0"><X size={16} /></button>
+        </div>
+        <div className="overflow-y-auto px-5 py-4 space-y-4">
+          {snippet && (
+            <div ref={passageRef}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Cited passage</p>
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed">{snippet}</div>
+            </div>
+          )}
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted"><Loader2 size={14} className="animate-spin" /> Loading source…</div>
+          ) : parts ? (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Full source</p>
+              <pre className="text-xs text-muted whitespace-pre-wrap font-sans leading-relaxed rounded-lg border border-border bg-surface-2/30 p-3 max-h-[40vh] overflow-y-auto">
+                {parts.before}<mark className="bg-amber-300/40 text-foreground rounded px-0.5">{parts.match}</mark>{parts.after}
+              </pre>
+            </div>
+          ) : content ? (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5">Full source</p>
+              <pre className="text-xs text-muted whitespace-pre-wrap font-sans leading-relaxed rounded-lg border border-border bg-surface-2/30 p-3 max-h-[40vh] overflow-y-auto">{content}</pre>
+            </div>
+          ) : !snippet ? (
+            <p className="text-sm text-muted">Source content isn’t available to preview.</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Locate the cited snippet in the full text (whitespace-tolerant) for highlighting. */
+function splitAround(full: string, snippet: string): { before: string; match: string; after: string } | null {
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+  const probe = norm(snippet).slice(0, 60); // first ~60 chars are enough to locate
+  if (!probe) return null;
+  const idx = norm(full).indexOf(probe);
+  if (idx < 0) return null;
+  // Map the normalized index back approximately onto the original text.
+  const approx = Math.max(0, full.toLowerCase().replace(/\s+/g, " ").indexOf(probe.toLowerCase()));
+  const start = approx;
+  const end = Math.min(full.length, start + snippet.length);
+  return { before: full.slice(0, start), match: full.slice(start, end), after: full.slice(end) };
 }
 
 function ArtifactCard({ artifact, projectId, onOpenDoc, onOpenDiagram }: { artifact: Artifact; projectId: string; onOpenDoc: (id: string) => void; onOpenDiagram: (d: { id: string; label?: string }) => void }) {

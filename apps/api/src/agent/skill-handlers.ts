@@ -10,6 +10,8 @@ export interface Citation {
   title: string;
   sourceType?: string;
   sourceId?: string;
+  transcriptId?: string | null;
+  snippet?: string;
   href?: string;
 }
 
@@ -49,11 +51,12 @@ export const HANDLERS: Record<string, SkillHandler> = {
     }
     const sources = hits
       .map((h) => {
-        const title = h.source?.title ?? "source";
+        const src = h.source as { id?: string; title?: string; sourceType?: string; transcriptId?: string | null; origin?: string } | undefined;
+        const title = src?.title ?? "source";
         // Global, deduped citation number so the same document keeps one [n]
         // across multiple searches in a run.
         const n = ctx.cite
-          ? ctx.cite({ kind: "knowledge", title, sourceType: h.source?.sourceType, sourceId: h.source?.id })
+          ? ctx.cite({ kind: "knowledge", title, sourceType: src?.origin ?? src?.sourceType, sourceId: src?.id, transcriptId: src?.transcriptId ?? null, snippet: h.content?.slice(0, 800) })
           : 0;
         return `[${n}] (${title}) ${h.content}`;
       })

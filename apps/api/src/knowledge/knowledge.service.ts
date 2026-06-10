@@ -3,6 +3,14 @@ import { PrismaClient, DataClassification } from "@prisma/client";
 import { ChunkingService } from "./chunking.service";
 import { EmbeddingService } from "./embedding.service";
 
+/** Human label for where a knowledge item came from (for citations). */
+function originLabel(sourceType: string | null, transcriptId: string | null, transcriptSource: string | null, hasFile: boolean): string {
+  if (transcriptSource === "granola") return "meeting";
+  if (hasFile) return "document"; // an uploaded PDF/DOCX file
+  if (transcriptId) return "transcript"; // pasted meeting text
+  return sourceType ?? "note";
+}
+
 @Injectable()
 export class KnowledgeService {
   constructor(
@@ -118,7 +126,7 @@ export class KnowledgeService {
       if (queryVec) {
         const vecLiteral = `[${queryVec.join(",")}]`;
         const results = await this.prisma.$queryRaw<
-          Array<{ id: string; content: string; chunk_index: number; knowledge_item_id: string; title: string; source_type: string; similarity: number }>
+          Array<{ id: string; content: string; chunk_index: number; knowledge_item_id: string; title: string; source_type: string; transcript_id: string | null; transcript_source: string | null; has_file: boolean; similarity: number }>
         >`
           SELECT
             kc.id,
@@ -127,9 +135,13 @@ export class KnowledgeService {
             ki.id AS knowledge_item_id,
             ki.title,
             ki."sourceType" AS source_type,
+            ki."transcriptId" AS transcript_id,
+            t."source" AS transcript_source,
+            (t."storageKey" IS NOT NULL) AS has_file,
             1 - (kc.embedding <=> ${vecLiteral}::vector) AS similarity
           FROM "knowledge_chunks" kc
           JOIN "knowledge_items" ki ON ki.id = kc."knowledgeItemId"
+          LEFT JOIN "meeting_transcripts" t ON t.id = ki."transcriptId"
           WHERE ki."projectId" = ${projectId}
             AND kc.embedding IS NOT NULL
           ORDER BY kc.embedding <=> ${vecLiteral}::vector
@@ -140,7 +152,13 @@ export class KnowledgeService {
           chunkId: r.id,
           content: r.content,
           similarity: Number(r.similarity).toFixed(3),
-          source: { id: r.knowledge_item_id, title: r.title, sourceType: r.source_type },
+          source: {
+            id: r.knowledge_item_id,
+            title: r.title,
+            sourceType: r.source_type,
+            transcriptId: r.transcript_id,
+            origin: originLabel(r.source_type, r.transcript_id, r.transcript_source, r.has_file),
+          },
         }));
       }
     }
@@ -151,16 +169,25 @@ export class KnowledgeService {
         knowledgeItem: { projectId },
         content: { contains: query, mode: "insensitive" },
       },
-      include: { knowledgeItem: { select: { id: true, title: true, sourceType: true } } },
+      include: { knowledgeItem: { select: { id: true, title: true, sourceType: true, transcriptId: true, transcript: { select: { source: true, storageKey: true } } } } },
       take: 8,
     });
 
-    return chunks.map((c) => ({
-      chunkId: c.id,
-      content: c.content,
-      similarity: null,
-      source: c.knowledgeItem,
-    }));
+    return chunks.map((c) => {
+      const ki = c.knowledgeItem;
+      return {
+        chunkId: c.id,
+        content: c.content,
+        similarity: null,
+        source: {
+          id: ki.id,
+          title: ki.title,
+          sourceType: ki.sourceType,
+          transcriptId: ki.transcriptId,
+          origin: originLabel(ki.sourceType, ki.transcriptId, ki.transcript?.source ?? null, Boolean(ki.transcript?.storageKey)),
+        },
+      };
+    });
   }
 
   getProjectItems(projectId: string, organizationId: string) {
