@@ -32,12 +32,19 @@ export const HANDLERS: Record<string, SkillHandler> = {
     const query = String(input.query ?? "").trim();
     if (!query) return { text: "No query provided." };
     const hits = await ctx.knowledge.searchProject(ctx.projectId, query, ctx.organizationId).catch(() => []);
-    if (!hits.length) return { text: "No relevant information found in the project knowledge base." };
-    const text = hits
+    if (!hits.length) {
+      return { text: `No results in the project knowledge base for "${query}". Tell the user the project's documents don't cover this; you may then answer from general knowledge but must label it as general (not from this project).` };
+    }
+    const sources = hits
       .map((h, i) => `[${i + 1}] (${h.source?.title ?? "source"}) ${h.content}`)
       .join("\n\n")
-      .slice(0, 6000);
-    return { text };
+      .slice(0, 8000);
+    return {
+      text:
+        `Sources retrieved from the project knowledge base for "${query}". ` +
+        `Answer the user using ONLY these sources: quote the specific figures, rates, tables and names VERBATIM, cite the [n], and do not substitute generic advice for the concrete details. ` +
+        `If they don't actually contain the answer, say so.\n\n${sources}`,
+    };
   },
 
   // Generate a diagram from the project (added to the project's Diagrams section as a draft).

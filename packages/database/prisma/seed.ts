@@ -85,7 +85,7 @@ async function main() {
     {
       slug: "search_project_knowledge",
       name: "Search project knowledge",
-      description: "Search the current project's knowledge base (transcripts, notes, docs) for information relevant to a query. Call this when answering a question that depends on what was discussed or documented in the project.",
+      description: "Search the current project's knowledge base (uploaded documents, transcripts, notes). Call this FIRST — before answering — for ANY question that could be answered from the project's documents: facts, figures, rates, how something works, definitions, decisions, people, processes. Use the user's specific terms. Do not assume the answer isn't there without searching, and do not answer such questions from your own general knowledge.",
       handlerKey: "knowledge.search",
       kind: "action",
       instructions: null as string | null,
