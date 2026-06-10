@@ -74,6 +74,28 @@ export const HANDLERS: Record<string, SkillHandler> = {
     };
   },
 
+  // Read ONE specific meeting/note in FULL — for questions about a named meeting
+  // ("the morning update", "Radence team update", "Tuesday DSU"). Far more reliable
+  // than vector search, which only returns scattered top chunks across all meetings.
+  "meeting.read": async (input, ctx) => {
+    if (!ctx.projectId) return { text: "No project context." };
+    const kw = String(input.title ?? input.meeting ?? "").trim();
+    const where: Prisma.MeetingTranscriptWhereInput = { projectId: ctx.projectId };
+    if (kw) where.title = { contains: kw, mode: "insensitive" };
+    const t = await ctx.prisma.meetingTranscript.findFirst({ where, orderBy: { occurredAt: "desc" } });
+    if (!t) return { text: kw ? `No meeting in this project matches "${kw}". Try list_upcoming_meetings or search_project_knowledge, or check the title.` : "No meetings found in this project." };
+    const ki = await ctx.prisma.knowledgeItem.findFirst({ where: { transcriptId: t.id }, select: { id: true } });
+    const origin = t.storageKey ? "document" : t.source === "granola" ? "meeting" : "transcript";
+    const n = ctx.cite ? ctx.cite({ kind: "knowledge", title: t.title, sourceType: origin, sourceId: ki?.id ?? t.id, transcriptId: t.id, snippet: t.rawContent.slice(0, 800) }) : 0;
+    const when = t.occurredAt ? new Date(t.occurredAt).toISOString().slice(0, 10) : "";
+    return {
+      text:
+        `[${n}] FULL content of "${t.title}"${when ? ` (${when})` : ""}. ` +
+        `Answer from this VERBATIM — quote who said what and what each person is working on; do not generalise into logistics. Cite [${n}].\n\n` +
+        t.rawContent.slice(0, 14000),
+    };
+  },
+
   // Generate a diagram from the project (added to the project's Diagrams section as a draft).
   "diagram.create": async (input, ctx) => {
     const kind = typeof input.kind === "string" ? input.kind : "architecture";

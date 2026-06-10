@@ -145,7 +145,7 @@ export class KnowledgeService {
           WHERE ki."projectId" = ${projectId}
             AND kc.embedding IS NOT NULL
           ORDER BY kc.embedding <=> ${vecLiteral}::vector
-          LIMIT 8
+          LIMIT 12
         `;
 
         return results.map((r) => ({
@@ -170,7 +170,7 @@ export class KnowledgeService {
         content: { contains: query, mode: "insensitive" },
       },
       include: { knowledgeItem: { select: { id: true, title: true, sourceType: true, transcriptId: true, transcript: { select: { source: true, storageKey: true } } } } },
-      take: 8,
+      take: 12,
     });
 
     return chunks.map((c) => {

@@ -92,6 +92,15 @@ async function main() {
       inputSchema: { type: "object", properties: { query: { type: "string", description: "What to search for" } }, required: ["query"], additionalProperties: false },
     },
     {
+      slug: "read_meeting",
+      name: "Read a specific meeting",
+      description: "Open ONE specific meeting/note in full by name or date — e.g. 'the morning update', 'Radence team update', 'Tuesday DSU', 'the 10 Jun standup'. Use this (not search) whenever the user refers to a particular meeting and you need exactly what was said in it — who said what, what each person is working on, decisions. Returns the full transcript.",
+      handlerKey: "meeting.read",
+      kind: "action",
+      instructions: "Pass a distinctive keyword from the meeting's title (e.g. 'Morning Update', 'Radence', a date) as `title`. It returns the most recent matching meeting in full — answer from it verbatim (quote who is working on what), don't generalise into logistics. If nothing matches, fall back to search_project_knowledge.",
+      inputSchema: { type: "object", properties: { title: { type: "string", description: "Keyword from the meeting title or date" } }, additionalProperties: false },
+    },
+    {
       slug: "create_diagram",
       name: "Create a diagram",
       description: "Generate an editable diagram for the project. Call this when a diagram would explain something better than prose — architecture, a data/sequence flow, or a process. Saves a draft the user can open and edit.",
