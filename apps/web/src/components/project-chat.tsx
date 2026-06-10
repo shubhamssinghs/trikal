@@ -155,9 +155,35 @@ export function ProjectChat({ projectId }: { projectId: string }) {
     if (key !== lastFileKey.current) { lastFileKey.current = key; setViewer(newest); }
   }, [files]);
 
+  // Resizable split: the files pane is only shown (on wide screens) when there's
+  // something to show, and the divider can be dragged to resize it.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [paneWidth, setPaneWidth] = useState(42); // % width of the right pane
+  const dragging = useRef(false);
+  const [lgUp, setLgUp] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const on = () => setLgUp(mq.matches);
+    on(); mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const rightPct = ((rect.right - e.clientX) / rect.width) * 100;
+      setPaneWidth(Math.min(70, Math.max(25, rightPct)));
+    };
+    const onUp = () => { dragging.current = false; document.body.style.userSelect = ""; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+  }, []);
+  const showPane = lgUp && files.length > 0;
+
   return (
-    <div className="flex h-full overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-    <section className="flex flex-col min-w-0 flex-1 lg:max-w-[58%] border-r border-border">
+    <div ref={containerRef} className="flex h-full overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+    <section className={`flex flex-col min-w-0 ${showPane ? "border-r border-border" : "flex-1"}`} style={showPane ? { width: `${100 - paneWidth}%` } : undefined}>
       {/* Header: thread switcher */}
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 shrink-0">
         <div className="relative">
@@ -269,16 +295,25 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
     </section>
 
-    {/* Right pane: files the assistant created (docs, charts, tables, sheets, decks, diagrams). */}
-    <aside className="hidden lg:flex flex-col w-[42%] bg-surface-2/10">
-      <ArtifactPane
-        items={files}
-        selected={viewer}
-        onSelect={setViewer}
-        projectId={projectId}
-        onChanged={() => { if (activeId) loadConversation(activeId); }}
-      />
-    </aside>
+    {/* Right pane: files the assistant created — only when there's something to show. */}
+    {showPane && (
+      <>
+        <div
+          onPointerDown={(e) => { dragging.current = true; document.body.style.userSelect = "none"; e.preventDefault(); }}
+          title="Drag to resize"
+          className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-blue-500/60 active:bg-blue-500/60 transition-colors"
+        />
+        <aside className="flex flex-col shrink-0 bg-surface-2/10" style={{ width: `${paneWidth}%` }}>
+          <ArtifactPane
+            items={files}
+            selected={viewer}
+            onSelect={setViewer}
+            projectId={projectId}
+            onChanged={() => { if (activeId) loadConversation(activeId); }}
+          />
+        </aside>
+      </>
+    )}
     </div>
   );
 }

@@ -1,8 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res, NotFoundException } from "@nestjs/common";
-import { Response } from "express";
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, Res, NotFoundException } from "@nestjs/common";
+import { Request, Response } from "express";
 import { AgentRuntimeService } from "./agent-runtime.service";
 
 const DEV_ORG_ID = "org_dev";
+
+/** Display name of the signed-in user (from OIDC userinfo), for the agent's identity context. */
+function userNameOf(req: Request): string | undefined {
+  const u = (req as unknown as { user?: Record<string, unknown> }).user;
+  if (!u) return undefined;
+  return (u.name ?? u.preferred_username ?? u.given_name ?? u.email) as string | undefined;
+}
 
 @Controller("agent")
 export class AgentController {
@@ -11,30 +18,33 @@ export class AgentController {
   /** Ask the agent — it decides which skills to use and may chain several. */
   @Post("ask")
   ask(
+    @Req() req: Request,
     @Body("question") question: string,
     @Body("projectId") projectId?: string,
     @Body("conversationId") conversationId?: string,
     @Body("mentions") mentions?: { type: string; id: string }[],
   ) {
-    return this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions });
+    return this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions, userName: userNameOf(req) });
   }
 
   /** Streaming ask — emits thinking / tool calls / answer as Server-Sent Events. */
   @Post("ask/stream")
   async askStream(
+    @Req() req: Request,
     @Res() res: Response,
     @Body("question") question: string,
     @Body("projectId") projectId?: string,
     @Body("conversationId") conversationId?: string,
     @Body("mentions") mentions?: { type: string; id: string }[],
   ) {
+    const userName = userNameOf(req);
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
     (res as unknown as { flushHeaders?: () => void }).flushHeaders?.();
     const send = (ev: unknown) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
     try {
-      await this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions, onEvent: send });
+      await this.agent.run({ surface: "ask", goal: question, projectId: projectId ?? null, organizationId: DEV_ORG_ID, conversationId: conversationId ?? null, mentions, userName, onEvent: send });
     } catch (e) {
       send({ type: "error", message: e instanceof Error ? e.message : String(e) });
     }

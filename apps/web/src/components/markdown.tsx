@@ -40,7 +40,14 @@ const components: Components = {
   ul: ({ children }) => <ul className="list-disc pl-4 my-1.5 space-y-0.5 marker:text-muted">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal pl-4 my-1.5 space-y-0.5 marker:text-muted">{children}</ol>,
   li: ({ children }) => <li className="text-xs text-foreground leading-relaxed">{children}</li>,
-  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-words">{children}</a>,
+  a: ({ href, children }) => {
+    // Only render real links (http(s) or in-page anchors). Bare text the model
+    // wrapped in [..](..) with a non-URL target shouldn't become a dead link.
+    const ok = typeof href === "string" && /^(https?:\/\/|#|mailto:)/.test(href);
+    return ok
+      ? <a href={href} target={href!.startsWith("#") ? undefined : "_blank"} rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-words">{children}</a>
+      : <span>{children}</span>;
+  },
   strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   code: ({ children }) => <code className="rounded bg-surface-2 px-1 py-0.5 text-[11px] font-mono text-foreground">{children}</code>,

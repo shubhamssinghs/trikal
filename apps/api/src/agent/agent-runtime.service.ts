@@ -21,7 +21,7 @@ export type AgentEvent =
   | { type: "step"; step: { idx: number; type: string; skillSlug?: string | null; title?: string | null; content?: unknown } }
   | { type: "done"; status: string; answer: string; artifacts: unknown[] }
   | { type: "error"; message: string };
-type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null; mentions?: Mention[]; onEvent?: (ev: AgentEvent) => void };
+type RunInput = { surface: string; goal: string; projectId?: string | null; organizationId: string; conversationId?: string | null; mentions?: Mention[]; userName?: string; onEvent?: (ev: AgentEvent) => void };
 
 const MAX_HISTORY_TURNS = 12; // recent turns sent verbatim; older ones live in the rolling summary
 
@@ -140,7 +140,7 @@ export class AgentRuntimeService {
     return `\nLive project state (current as of now — use this directly; don't ask the user for it):\n- ${lines.join("\n- ")}`;
   }
 
-  async run({ surface, goal, projectId, organizationId, conversationId, mentions, onEvent }: RunInput) {
+  async run({ surface, goal, projectId, organizationId, conversationId, mentions, userName, onEvent }: RunInput) {
     const s = await this.settings.resolve(organizationId);
     const provider = s.llmProvider === "openai" ? "openai" : "anthropic";
     const apiKey = provider === "openai" ? s.openaiApiKey : s.anthropicApiKey;
@@ -198,9 +198,18 @@ export class AgentRuntimeService {
       : null;
     const stateBlock = projectId ? await this.projectStateBlock(projectId, organizationId) : "";
 
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const firstName = userName?.trim().split(/\s+/)[0];
     const system = [
       "You are an AI technical-manager assistant operating inside a project command center.",
+      `Today's date is ${today}. Use it whenever a date is relevant (e.g. dated status updates).`,
+      userName
+        ? `You are assisting ${userName} — they are the person you are chatting with. When their name (\"${userName}\"${firstName && firstName !== userName ? ` or \"${firstName}\"` : ""}) appears in meeting notes, transcripts, or action items, that is THIS user: address them in the second person (\"you\", \"your\"), e.g. \"you committed to…\", never in the third person.`
+        : "",
       "You have a set of skills (tools). Decide when to call them; you may chain several skills to satisfy a request.",
+      "",
+      "BEFORE answering, make sure you understand the request. If it is ambiguous — unclear who the audience is, what tone/format/channel is wanted, what to include or leave out, or you're genuinely unsure what the user means — ask ONE short clarifying question first instead of guessing. (Don't over-ask: when the request is clear, just do it.)",
+      "When asked to DRAFT a message / update / email / Teams or Slack post: write it ready to send in a natural human voice — an appropriate greeting, today's date when it's a status update, points grouped under short labels, concise. Output ONLY the message itself: no meta-text like \"I have logged…\" or \"feel free to send\", no links unless you were given a real URL, and NO commitments, targets, deadlines or owners unless the user explicitly asked to include them. Match the channel (Teams/Slack lighter, email a little more formal).",
       "",
       "ANSWERING POLICY — decide where the answer should come from, then ground in it:",
       project
